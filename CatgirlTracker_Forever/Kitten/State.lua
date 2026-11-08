@@ -48,7 +48,7 @@ local PERSISTED = {
     heels = true, heelLevel = true, bell = true, tail = true, jewel = true,
     belt = true, beltMode = true, bra = true, leash = true, leashOwner = true,
     toys = true, locks = true, heat = true, sub = true, zone = true,
-    instanceType = true, pos = true, petSummoned = true, week = true,
+    instanceType = true, pos = true, petSummoned = true, maid = true, week = true,
     counters = true, rev = true, updatedAt = true, lastUnixUpdate = true,
 }
 
@@ -237,6 +237,54 @@ function CCT.State.DropSession()
         return
     end
     DropUnknown(live)
+end
+
+local function CopyMaidItem(item)
+    if type(item) ~= "table" then
+        return nil
+    end
+    local name = type(item.name) == "string" and item.name or ""
+    return {
+        itemID = tonumber(item.itemID),
+        name = name,
+        count = tonumber(item.count) or 0,
+    }
+end
+
+local function NormalizeMaid(state)
+    if state.maid == nil then
+        return false
+    end
+    if type(state.maid) ~= "table" then
+        state.maid = nil
+        return true
+    end
+    local changed = false
+    local source = state.maid
+    local items = {}
+    local rawItems = type(source.items) == "table" and source.items or {}
+    for i = 1, math.min(20, #rawItems) do
+        local copy = CopyMaidItem(rawItems[i])
+        if copy ~= nil then
+            items[#items + 1] = copy
+        end
+    end
+    local instructions = {}
+    local rawText = type(source.instructions) == "table" and source.instructions or {}
+    for i = 1, math.min(20, #rawText) do
+        if type(rawText[i]) == "string" then
+            instructions[#instructions + 1] = rawText[i]
+        end
+    end
+    local id = source.id
+    if id ~= nil then
+        id = tostring(id)
+    end
+    if source.id ~= id or type(source.items) ~= "table" or type(source.instructions) ~= "table" or #rawItems ~= #items or #rawText ~= #instructions then
+        changed = true
+    end
+    state.maid = { id = id, items = items, instructions = instructions }
+    return changed
 end
 
 local function NormalizeCounters(state)
@@ -550,6 +598,7 @@ function CCT.State.Normalize(state, strip)
     changed = NormalizeToys(state) or changed
     changed = NormalizeLocks(state) or changed
     changed = NormalizeCounters(state) or changed
+    changed = NormalizeMaid(state) or changed
     local shown = ClampInt((tonumber(state.heat) or 0) + 0.5, 0, 100)
     if (state.counters.heatPeak or 0) < shown then
         state.counters.heatPeak = shown
@@ -679,6 +728,43 @@ end
 
 function CCT.State.SetPetSummoned(on)
     return SetFlag("petSummoned", on)
+end
+
+function CCT.State.SetMaid(list)
+    local state = Current()
+    if state == nil or type(list) ~= "table" then
+        return false
+    end
+    local items = {}
+    local source = type(list.items) == "table" and list.items or {}
+    for i = 1, math.min(20, #source) do
+        local copy = CopyMaidItem(source[i])
+        if copy ~= nil then
+            items[#items + 1] = copy
+        end
+    end
+    local instructions = {}
+    local texts = type(list.instructions) == "table" and list.instructions or {}
+    for i = 1, math.min(20, #texts) do
+        if type(texts[i]) == "string" then
+            instructions[#instructions + 1] = texts[i]
+        end
+    end
+    state.maid = {
+        id = list.id ~= nil and tostring(list.id) or nil,
+        items = items,
+        instructions = instructions,
+    }
+    Touch()
+    return true
+end
+
+function CCT.State.Maid()
+    local state = Current()
+    if type(state) ~= "table" or type(state.maid) ~= "table" then
+        return nil
+    end
+    return state.maid
 end
 
 function CCT.State.SetBelt(on)

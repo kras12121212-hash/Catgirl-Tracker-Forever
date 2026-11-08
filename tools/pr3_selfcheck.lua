@@ -521,7 +521,7 @@ check("lazy heel overlay", frameNamed("CatgirlHeelsFailureOverlay") == nil)
 check("lazy heel bars", frameNamed("CatgirlHeelsSpeedBar") == nil)
 check("lazy collar reminder", frameNamed("CatgirlBellReminder") == nil)
 check("lazy tail reminder", frameNamed("CatgirlTailBellReminder") == nil)
-check("login did not jingle", #afters == 0 and #played == 0)
+check("login did not jingle", #played == 0 and #afters == 2 and afters[1].delay == 2 and afters[2].delay == 300)
 
 local roster = {
     { "Kitten", "rank", 0, 1, "Mage", "Elwynn", "owner=Nyx", "", true },
@@ -835,6 +835,7 @@ check("locked texture", CCT.Mittens.Texture("locked"):find("pawmittens.tga", 1, 
 check("heavy texture", CCT.Mittens.Texture("heavy"):find("heavypawmittens.tga", 1, true) ~= nil)
 check("squeaking texture", CCT.Mittens.Texture("squeaking"):find("heavypawmittens.tga", 1, true) ~= nil)
 
+local macrosBeforeLock = #macros
 check("empty bar lock", CCT.Mittens.Set("Nyx", "locked") == true)
 local cursorFrame = frameNamed("CatgirlPawMittensCursor")
 local cursorTicker = activeTickers(0.05)[1]
@@ -842,7 +843,7 @@ check("cursor frame", cursorFrame ~= nil and cursorFrame.shown == true and curso
 check("cursor strata and alpha", cursorFrame.strata == "FULLSCREEN_DIALOG" and cursorFrame.texture.alpha == 0.95)
 check("cursor has no OnUpdate", cursorFrame.scripts.OnUpdate == nil)
 check("cursor ticker is 0.05", cursorTicker ~= nil and cursorTicker.interval == 0.05)
-check("empty bar does not create a macro", #macros == 0)
+check("empty bar does not create a macro", #macros == macrosBeforeLock)
 check("locked cursor art", cursorFrame.texture.path:find("heavypawmittens", 1, true) == nil and cursorFrame.texture.path:find("pawmittens.tga", 1, true) ~= nil)
 cursorTicker.fn()
 check(
@@ -865,6 +866,7 @@ check("cursor ticker cancelled", cursorTicker.cancelled == true and cursorFrame.
 check("secret cursor did not add a frame", #frames == secretPoints)
 
 actions[1] = { type = "spell", id = 100 }
+macroIndex = 0
 clearList(macros)
 clearList(places)
 check("occupied lock", CCT.Mittens.Set("Nyx", "locked") == true)

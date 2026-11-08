@@ -319,6 +319,17 @@ local function DecodeUser(value)
     return text
 end
 
+function CCT.Net.EncodeUser(value)
+    return EncodeUser(value)
+end
+
+function CCT.Net.DecodeUser(value)
+    if value == nil then
+        return ""
+    end
+    return DecodeUser(value)
+end
+
 local function FieldText(key, value)
     if value == nil then
         return nil
@@ -693,9 +704,24 @@ function CCT.Net.EnqueueSet(target, entries, onResult)
         if not IsReliable(kind) then
             return "toobig"
         end
-        local wires, reason = Pieces(kind, entry.fields or {})
-        if wires == nil then
-            return reason == "toobig" and "toobig" or "toobig"
+        local wires, reason
+        if type(entry.wires) == "table" then
+            wires = {}
+            for w = 1, #entry.wires do
+                local text = entry.wires[w]
+                if type(text) ~= "string" or text == "" or #text > MAX_BYTES then
+                    return "toobig"
+                end
+                wires[w] = text
+            end
+            if #wires == 0 then
+                return "toobig"
+            end
+        else
+            wires, reason = Pieces(kind, entry.fields or {})
+            if wires == nil then
+                return reason == "toobig" and "toobig" or "toobig"
+            end
         end
         total = total + #wires
         built[#built + 1] = { kind = kind, fields = entry.fields or {}, wires = wires }
@@ -706,12 +732,15 @@ function CCT.Net.EnqueueSet(target, entries, onResult)
     if total > (RELIABLE_CAP - #reliable) then
         return "busy"
     end
-    local group = { left = #built, done = false, fn = onResult }
+    -- One queue slot is one on-wire part. The callback fires once for the set.
+    local group = { left = total, done = false, fn = onResult }
     for i = 1, #built do
         local row = built[i]
-        local item = NewItem(short, row.kind, row.fields, row.wires, nil, "reliable")
-        item.group = group
-        reliable[#reliable + 1] = item
+        for w = 1, #row.wires do
+            local item = NewItem(short, row.kind, row.fields, { row.wires[w] }, nil, "reliable")
+            item.group = group
+            reliable[#reliable + 1] = item
+        end
     end
     return "queued"
 end
@@ -1376,6 +1405,25 @@ local function DiscardOlderState(sender, rev)
     end
 end
 
+local JOIN_KEYS = { text = true, name = true }
+
+local function MergeToken(merged, key, remainder)
+    local lower = tostring(key):lower()
+    if lower == "part" then
+        return
+    end
+    if JOIN_KEYS[lower] then
+        for i = 1, #merged.order do
+            if tostring(merged.order[i][1]):lower() == lower then
+                merged.order[i][2] = tostring(merged.order[i][2]) .. tostring(remainder)
+                merged.fields[lower] = DecodeUser(merged.order[i][2])
+                return
+            end
+        end
+    end
+    ApplyToken(merged, key, remainder)
+end
+
 local function MergeParts(buffer)
     local merged = {
         type = buffer.typeName,
@@ -1390,10 +1438,7 @@ local function MergeParts(buffer)
             return nil
         end
         for i = 1, #parsed.order do
-            local key = parsed.order[i][1]
-            if tostring(key):lower() ~= "part" then
-                ApplyToken(merged, key, parsed.order[i][2])
-            end
+            MergeToken(merged, parsed.order[i][1], parsed.order[i][2])
         end
         merged.type = parsed.type
         merged.kind = parsed.kind

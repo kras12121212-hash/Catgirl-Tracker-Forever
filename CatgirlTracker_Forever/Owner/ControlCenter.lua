@@ -1,7 +1,8 @@
 -- Owner control center. /cgcc reads the snapshot and enqueues Cmd.
 -- Buttons do not call SendAddonMessage. Counting waits for Success and Ack ok:1.
--- The maid editor is an empty shell. Nothing in that shell is sent.
+-- The maid editor is CCT.Maid. Picture popups, the binds strip, and advertise already shipped.
 -- Force group is Cmd op group. KittyLayerGroup.lua layer list, linv, and the NWB read do not ship. The classic leave-first frame does not ship either.
+-- The omitted layer list is KittyLayerGroup.lua. Layer chat is not in this addon.
 
 local ADDON_NAME, CCT = ...
 
@@ -213,7 +214,11 @@ function CCT.Control.LockMinutes(text)
 end
 
 function CCT.Control.MaidShell()
-    return "Maid editor", "Maid lists are edited here. Nothing is sent yet."
+    local body = "0 items, 0 instructions"
+    if CCT.Maid and type(CCT.Maid.Summary) == "function" then
+        body = CCT.Maid.Summary()
+    end
+    return "Maid editor", body
 end
 
 local function KittenName(name)
@@ -500,6 +505,10 @@ function CCT.Control.Open()
         window.hours = CreateFrame("EditBox", nil, window)
         window.hours:SetText("1.5")
         window.status = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        window.maid = window:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        if CCT.NyaOptions and type(CCT.NyaOptions.Attach) == "function" then
+            CCT.NyaOptions.Attach(window)
+        end
         window:Hide()
     end
     local summary = CCT.Control.Summary()
@@ -509,6 +518,9 @@ function CCT.Control.Open()
         else
             window.status:SetText(string.format("heat %s sub %s", tostring(summary.heat), tostring(summary.sub)))
         end
+    end
+    if window.maid and window.maid.SetText then
+        window.maid:SetText(select(2, CCT.Control.MaidShell()))
     end
     window:Show()
     return window

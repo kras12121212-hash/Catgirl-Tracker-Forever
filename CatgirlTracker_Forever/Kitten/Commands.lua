@@ -2,7 +2,7 @@
 -- An empty roster cache holds the command for 10 seconds, then drops it.
 -- /cctcmd is deleted. Slash() remains a local bypass for tests.
 -- This file does not send addon messages. It does not move feature state.
--- Maid handlers stay until a later PR. A handler may replace those stubs.
+-- Maid handlers are replaced by Kitten/Maid.lua. A fragment with no update id stays later.
 
 local ADDON_NAME, CCT = ...
 

@@ -39,8 +39,11 @@ Kitten/Nap.lua
 Kitten/Headpet.lua
 Kitten/Zone.lua
 Kitten/Location.lua
+Kitten/Maid.lua
+Kitten/Pet.lua
 Owner/Corroboration.lua
 Owner/Map.lua
 Owner/Advertise.lua
+Owner/NyaOptions.lua
 Owner/ControlCenter.lua
 Master/Store.lua

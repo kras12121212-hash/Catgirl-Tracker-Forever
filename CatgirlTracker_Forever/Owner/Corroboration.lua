@@ -1,6 +1,6 @@
 -- Owner memory. A command counts only after Success and Ack ok:1.
 -- The weekly tally is sent to the Guild Master. Zeros are stored.
--- Tasks stays at 0 until PR 8. There is no OwnerWeek ack.
+-- tasks moves only from CCT.Corroboration.CountTasks. There is no OwnerWeek ack.
 
 local ADDON_NAME, CCT = ...
 
@@ -188,6 +188,22 @@ local function TryFinish(item)
         return false
     end
     ApplyCount(item)
+    return true
+end
+
+function CCT.Corroboration.CountTasks(name)
+    if type(name) ~= "string" or name == "" then
+        return false
+    end
+    local week = WeekRow(name)
+    if week == nil then
+        return false
+    end
+    Bump(week, "tasks")
+    Remember(name, "maid", "tasks")
+    if type(CCT.Corroboration.Flush) == "function" then
+        CCT.Corroboration.Flush(name, false)
+    end
     return true
 end
 

@@ -71,17 +71,17 @@ check("corroboration does not print the master online line", corrSrc:find("come 
 check("jewel sample still checks the secret first", reportSrc:find("issecretvalue(rawMap)", 1, true) ~= nil and reportSrc:find("issecretvalue(rawMap)", 1, true) < reportSrc:find("GetPlayerMapPosition", 1, true))
 
 local pipe = io.popen("find " .. addon .. " -name '*.lua'")
-local taskWriter = nil
+local taskWriters = {}
 if pipe ~= nil then
     for path in pipe:lines() do
         local text = read(path)
         if text:find('AddCounter("tasks"', 1, true) or text:find("AddCounter('tasks'", 1, true) then
-            taskWriter = path
+            taskWriters[#taskWriters + 1] = path
         end
     end
     pipe:close()
 end
-check("no file increments tasks", taskWriter == nil, taskWriter)
+check("only maid increments tasks", #taskWriters == 1 and taskWriters[1]:find("/Kitten/Maid.lua", 1, true) ~= nil, table.concat(taskWriters, ", "))
 
 local frames = {}
 local sends = {}

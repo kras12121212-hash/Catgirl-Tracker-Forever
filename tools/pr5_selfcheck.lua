@@ -537,9 +537,13 @@ fire("ADDON_LOADED", "CatgirlTracker_Forever")
 local playedAtLogin = #played
 local aftersAtLogin = #afters
 fire("PLAYER_LOGIN")
+local loginDelays = {}
+for i = aftersAtLogin + 1, #afters do
+    loginDelays[#loginDelays + 1] = afters[i].delay
+end
 check("player ready", CCT.Player.ready == true and CCT.Player.short == "Kitten")
 check("login is quiet", #lines == 0 and #sent == 0 and #notices == 0)
-check("login does not play or flash", #played == playedAtLogin and #afters == aftersAtLogin)
+check("login does not play or flash", #played == playedAtLogin and #loginDelays == 2 and loginDelays[1] == 2 and loginDelays[2] == 300)
 
 local function state()
     return CCT.State.Get()
