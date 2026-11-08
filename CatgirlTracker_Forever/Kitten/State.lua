@@ -68,6 +68,7 @@ local live = nil
 local boundShort = nil
 local listeners = {}
 local counterListeners = {}
+local notifying = false
 
 local function Current()
     if not CCT.Player or not CCT.Player.ready then
@@ -79,6 +80,11 @@ end
 local function Touch(counterName)
     live.rev = (tonumber(live.rev) or 0) + 1
     live.updatedAt = CCT.UnixNow()
+    -- Submissiveness writes from a listener. A nested write must not replay the wave.
+    if notifying then
+        return
+    end
+    notifying = true
     if counterName ~= nil then
         local value = live.counters and live.counters[counterName]
         for i = 1, #counterListeners do
@@ -88,6 +94,7 @@ local function Touch(counterName)
     for i = 1, #listeners do
         listeners[i](live)
     end
+    notifying = false
 end
 
 function CCT.State.Listen(fn)

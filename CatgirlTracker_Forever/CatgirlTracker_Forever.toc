@@ -25,3 +25,8 @@ Kitten/Chastity.lua
 Kitten/Toys.lua
 Kitten/Locks.lua
 Kitten/Commands.lua
+Kitten/HeatConfig.lua
+Kitten/Heat.lua
+Kitten/Submissiveness.lua
+Kitten/SoundEngine.lua
+Kitten/Discipline.lua

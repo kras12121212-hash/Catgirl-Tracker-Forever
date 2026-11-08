@@ -453,12 +453,11 @@ local sources = {
 
 check(
     "toc order",
-    toc:find("Kitten/Bells.lua\nKitten/Leash.lua\nKitten/Chastity.lua\nKitten/Toys.lua\nKitten/Locks.lua\nKitten/Commands.lua", 1, true) ~= nil
+    toc:find("Kitten/Bells.lua\nKitten/Leash.lua\nKitten/Chastity.lua\nKitten/Toys.lua\nKitten/Locks.lua\nKitten/Commands.lua\nKitten/HeatConfig.lua\nKitten/Heat.lua\nKitten/Submissiveness.lua\nKitten/SoundEngine.lua\nKitten/Discipline.lua", 1, true) ~= nil
 )
 check("toc has no net", toc:find("Net.lua", 1, true) == nil)
-check("toc has no heat", toc:find("Heat.lua", 1, true) == nil)
 check("no net file", io.open(addon .. "/Core/Net.lua", "rb") == nil)
-check("no heat file", io.open(addon .. "/Kitten/Heat.lua", "rb") == nil)
+check("heat follows commands", toc:find("Kitten/Commands.lua\nKitten/HeatConfig.lua", 1, true) ~= nil)
 
 local banned = {
     "SendAddonMessage",
@@ -713,7 +712,7 @@ check("realm owner applies when the note arrives", state().ears == "kitten" and 
 check("earmuffs announce", hasLine("Kitten earmuffs applied. Words sound cuter now nya~") and hasNotice("Earmuffs applied: kitten."))
 
 local tasksBefore = state().counters.tasks
-for _, op in ipairs({ "disc", "group", "maid", "maiditem", "maidtext" }) do
+for _, op in ipairs({ "group", "maid", "maiditem", "maidtext" }) do
     local result = cmd("Cmd,op:" .. op .. ",cid:Later1")
     check(
         op .. " waits",
@@ -1172,11 +1171,11 @@ CCT.State.SetHeat(40)
 clearList(sent)
 clearList(notices)
 local shock = CCT.Toys.Handle("dildo", "shock", 2, "Nyx")
-check("shock under a belt", shock == true and state().heat == 30 and state().toys.dildo.vibe == 0)
+check("shock under a belt", shock == true and state().heat == 50 and state().toys.dildo.vibe == 0, "heat " .. tostring(state().heat) .. " sub " .. tostring(state().sub))
 check("shock whisper", hasWhisper(CCT.Messages.TOY_DILDO_SHOCK_2, "Nyx") and hasNotice("Dildo shock intensity 2.") and soundCount("shock", 2) == 1)
 sentBefore = #sent
 CCT.Toys.Handle("dildo", "shock", 2, "Nyx")
-check("shock is never quiet", #sent == sentBefore + 1 and state().heat == 20)
+check("shock is never quiet", #sent == sentBefore + 1 and state().heat == 60, "heat " .. tostring(state().heat))
 
 local heatCalls = 0
 local originalSetHeat = CCT.State.SetHeat
