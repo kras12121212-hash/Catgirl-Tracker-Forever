@@ -1,6 +1,6 @@
 -- Owner memory. A command counts only after Success and Ack ok:1.
--- The weekly tally stays on this client and is not sent.
--- Zeros are stored. Tasks stays at 0 until PR 8.
+-- The weekly tally is sent to the Guild Master. Zeros are stored.
+-- Tasks stays at 0 until PR 8. There is no OwnerWeek ack.
 
 local ADDON_NAME, CCT = ...
 
@@ -68,6 +68,12 @@ local function WeekRow(name)
     local current = CCT.Week and CCT.Week.Id and CCT.Week.Id() or nil
     local row = db.owner.weeks[name]
     if type(row) ~= "table" or (current ~= nil and row.week ~= current) then
+        if type(row) == "table" then
+            if type(db.owner.closed) ~= "table" then
+                db.owner.closed = {}
+            end
+            db.owner.closed[name] = row
+        end
         row = EmptyWeek(current)
         db.owner.weeks[name] = row
     end
@@ -172,6 +178,9 @@ local function ApplyCount(item)
         CCT.Chat.Send(item.sentence, "WHISPER", nil, item.kitten, { raw = true })
     end
     item.counted = true
+    if type(CCT.Corroboration.Flush) == "function" then
+        CCT.Corroboration.Flush(item.kitten, false)
+    end
 end
 
 local function TryFinish(item)
@@ -362,6 +371,170 @@ function CCT.Corroboration.Reset()
     pending = {}
 end
 
+local TIMER_GAP = 300
+local wasOnline = false
+local lastTimer = nil
+local sentMark = {}
+
+local function MasterName()
+    local settings = CCT.db and CCT.db.settings
+    local name = settings and settings.masterName
+    if type(name) ~= "string" or name == "" then
+        return nil
+    end
+    return name
+end
+
+local function MasterOnline()
+    if MasterName() == nil or CCT.Roster == nil or type(CCT.Roster.IsMasterOnline) ~= "function" then
+        return false
+    end
+    return CCT.Roster.IsMasterOnline() == true
+end
+
+local function OwnerKeys()
+    local keys = {}
+    for i = 1, #RESTRAINTS do
+        keys[#keys + 1] = RESTRAINTS[i] .. "On"
+        keys[#keys + 1] = RESTRAINTS[i] .. "Off"
+    end
+    for i = 1, #TOY_IDS do
+        keys[#keys + 1] = TOY_IDS[i] .. "On"
+        keys[#keys + 1] = TOY_IDS[i] .. "Off"
+    end
+    keys[#keys + 1] = "tasks"
+    keys[#keys + 1] = "disc"
+    return keys
+end
+
+local KEYS = OwnerKeys()
+
+local function RowFields(row, kitten)
+    local fields = {
+        { "week", row.week },
+        { "seq", tostring(row.seq or 1) },
+        { "kitten", kitten },
+    }
+    for i = 1, #KEYS do
+        local name = KEYS[i]
+        fields[#fields + 1] = { name, tostring(tonumber(row[name]) or 0) }
+    end
+    return fields
+end
+
+local function MarkOf(name)
+    local db = DB()
+    local closed = db and db.owner and db.owner.closed and db.owner.closed[name]
+    local week = db and db.owner and db.owner.weeks and db.owner.weeks[name]
+    local older = ""
+    local current = ""
+    if type(closed) == "table" then
+        older = tostring(closed.week) .. ":" .. tostring(closed.seq)
+    end
+    if type(week) == "table" then
+        current = tostring(week.week) .. ":" .. tostring(week.seq)
+    end
+    return older .. "|" .. current
+end
+
+local function WhisperWeek(target, row, kitten)
+    if type(row) ~= "table" or type(row.week) ~= "string" or row.week == "" then
+        return false
+    end
+    if CCT.Net == nil or type(CCT.Net.Whisper) ~= "function" then
+        return false
+    end
+    return CCT.Net.Whisper(target, "ownerweek", RowFields(row, kitten)) and true or false
+end
+
+function CCT.Corroboration.Flush(name, force)
+    local master = MasterName()
+    if master == nil or type(name) ~= "string" or name == "" then
+        return false
+    end
+    local db = DB()
+    if type(db) ~= "table" or type(db.owner) ~= "table" then
+        return false
+    end
+    local week = db.owner.weeks and db.owner.weeks[name]
+    local closed = db.owner.closed and db.owner.closed[name]
+    if type(week) ~= "table" and type(closed) ~= "table" then
+        return false
+    end
+    local mark = MarkOf(name)
+    if force ~= true and sentMark[name] == mark then
+        return false
+    end
+    local sent = false
+    if type(closed) == "table" then
+        sent = WhisperWeek(master, closed, name) or sent
+    end
+    if type(week) == "table" then
+        sent = WhisperWeek(master, week, name) or sent
+    end
+    if sent then
+        sentMark[name] = mark
+    end
+    return sent
+end
+
+function CCT.Corroboration.FlushAll(force)
+    local db = DB()
+    if type(db) ~= "table" or type(db.owner) ~= "table" then
+        return false
+    end
+    local any = false
+    local seen = {}
+    if type(db.owner.weeks) == "table" then
+        for name in pairs(db.owner.weeks) do
+            seen[name] = true
+            any = CCT.Corroboration.Flush(name, force) or any
+        end
+    end
+    if type(db.owner.closed) == "table" then
+        for name in pairs(db.owner.closed) do
+            if not seen[name] then
+                any = CCT.Corroboration.Flush(name, force) or any
+            end
+        end
+    end
+    return any
+end
+
+function CCT.Corroboration.Tick(now)
+    local stamp = tonumber(now)
+    if stamp == nil and type(time) == "function" then
+        stamp = time()
+    end
+    stamp = stamp or 0
+    if lastTimer == nil then
+        lastTimer = stamp
+        return false
+    end
+    if stamp - lastTimer < TIMER_GAP then
+        return false
+    end
+    lastTimer = stamp
+    return CCT.Corroboration.FlushAll(false)
+end
+
+local function NoteMaster()
+    local online = MasterOnline()
+    if online and not wasOnline then
+        wasOnline = true
+        CCT.Corroboration.FlushAll(true)
+        return true
+    end
+    if not online then
+        wasOnline = false
+    end
+    return false
+end
+
+function CCT.Corroboration.OnRoster()
+    return NoteMaster()
+end
+
 if CCT.Net and type(CCT.Net.On) == "function" then
     CCT.Net.On("state", function(sender, parsed)
         CCT.Corroboration.ApplyState(sender, parsed)
@@ -371,5 +544,21 @@ if CCT.Net and type(CCT.Net.On) == "function" then
     end)
     CCT.Net.On("ack", function(sender, parsed)
         CCT.Corroboration.OnAck(sender, parsed)
+    end)
+end
+
+if CreateFrame then
+    local frame = CreateFrame("Frame")
+    frame:RegisterEvent("GUILD_ROSTER_UPDATE")
+    frame:SetScript("OnEvent", function(_, event)
+        if event == "GUILD_ROSTER_UPDATE" then
+            CCT.Corroboration.OnRoster()
+        end
+    end)
+end
+
+if C_Timer and type(C_Timer.NewTicker) == "function" then
+    C_Timer.NewTicker(300, function()
+        CCT.Corroboration.Tick(type(time) == "function" and time() or nil)
     end)
 end

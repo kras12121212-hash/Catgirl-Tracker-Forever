@@ -511,9 +511,13 @@ function CCT.Report.Tick(now)
         CCT.Report.SendState()
     end
     local state = State()
-    if type(state) == "table" and state.jewel == true and nextSampleAt ~= nil and stamp >= nextSampleAt then
-        nextSampleAt = stamp + SAMPLE_GAP
-        CCT.Report.SamplePos(stamp)
+    if type(state) == "table" and state.jewel == true then
+        if CCT.Location and type(CCT.Location.Tick) == "function" then
+            CCT.Location.Tick(stamp)
+        elseif nextSampleAt ~= nil and stamp >= nextSampleAt then
+            nextSampleAt = stamp + SAMPLE_GAP
+            CCT.Report.SamplePos(stamp)
+        end
     end
     if CCT.Pictures and type(CCT.Pictures.Tick) == "function" then
         CCT.Pictures.Tick(stamp)

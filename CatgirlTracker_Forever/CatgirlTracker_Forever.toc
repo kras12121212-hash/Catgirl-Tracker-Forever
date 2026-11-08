@@ -33,7 +33,14 @@ Kitten/SoundEngine.lua
 Kitten/Discipline.lua
 Kitten/Report.lua
 Kitten/Pictures.lua
+Kitten/Ledger.lua
+Kitten/Slack.lua
+Kitten/Nap.lua
+Kitten/Headpet.lua
+Kitten/Zone.lua
+Kitten/Location.lua
 Owner/Corroboration.lua
 Owner/Map.lua
 Owner/Advertise.lua
 Owner/ControlCenter.lua
+Master/Store.lua
