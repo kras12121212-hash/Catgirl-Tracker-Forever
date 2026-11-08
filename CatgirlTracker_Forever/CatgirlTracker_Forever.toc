@@ -20,3 +20,8 @@ Kitten/Nya.lua
 Kitten/Mittens.lua
 Kitten/Heels.lua
 Kitten/Bells.lua
+Kitten/Leash.lua
+Kitten/Chastity.lua
+Kitten/Toys.lua
+Kitten/Locks.lua
+Kitten/Commands.lua
