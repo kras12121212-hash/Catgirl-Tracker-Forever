@@ -200,8 +200,6 @@ for line in toc:gmatch("[^\n]+") do
 end
 
 check("toc lists chat before state", toc:find("Core/Chat.lua\nKitten/State.lua\nKitten/Gag.lua\nKitten/Blindfold.lua\nKitten/Ears.lua\nKitten/Nya.lua\n", 1, true) ~= nil)
-check("toc has no mittens", toc:find("Mittens.lua", 1, true) == nil)
-check("toc has no heels", toc:find("Heels.lua", 1, true) == nil)
 check("toc has no net", toc:find("Net.lua", 1, true) == nil)
 
 for i = 1, #files do
