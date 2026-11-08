@@ -337,7 +337,7 @@ The heat bar matches the current widget: 240×18, color lerp blue → pink → r
 
 Commands arrive as addon whispers. The grammar is below. The kitten applies a command only when the sender's short name equals `CCT.Roster.GetOwnerShort()`. If the roster cache is empty, hold the command for up to 10 seconds and drop it if the owner is still unknown. Ignore everyone else, including the Guild Master. A command is not a scorecard update. A normal chat whisper is never the trigger. Typing the old sentence by hand does nothing.
 
-After `Ack` with `ok:1`, both clients still show the classic roleplay lines. The owner client whispers the button sentence, such as "Your owner has secured a heavy gag in place. You can no longer speak." The kitten whispers the matching `CCT_Messages` reply, such as `GAG_HEAVY`. Both use `CCT.Chat.Send(..., { raw = true })` so gag and Nya do not mangle them. The kitten also keeps the local print and the raid notice from the classic handler. Those lines inform. They are not parsed. Guild flavor lines do go through the pipeline.
+After `Ack` with `ok:1`, both clients still show the classic roleplay lines. The owner client whispers the button sentence, such as "Your owner has secured a heavy gag in place. You can no longer speak." The kitten whispers the matching `CCT_Messages` reply, such as `GAG_HEAVY`. Both use `CCT.Chat.Send(..., { raw = true })` so gag and Nya do not mangle them. The kitten also keeps the local print and the raid notice from the classic handler. Those lines inform. They are not parsed. Guild flavor lines and other addon sends pass raw as well. A worn gag rewrites only chat the player types.
 
 #### Gag
 

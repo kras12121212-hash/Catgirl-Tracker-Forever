@@ -1,6 +1,6 @@
 -- Five advertise lines. Sending is off until this character enables it.
 -- The flag lives on db.chars[short].advertise. It is not one of the five modules.
--- Lines go out through CCT.Chat.Send, so a gag still applies.
+-- Lines go out through CCT.Chat.Send with raw set, so a worn gag does not rewrite them.
 
 local ADDON_NAME, CCT = ...
 
@@ -139,7 +139,7 @@ function CCT.Advertise.SendAll()
     for i = 1, #lines do
         local entry = CCT.Advertise.Parse(lines[i])
         if type(entry) == "table" and entry.error == nil and type(entry.message) == "string" and entry.message ~= "" then
-            CCT.Chat.Send(entry.message, entry.chatType, nil, entry.target or entry.channel)
+            CCT.Chat.Send(entry.message, entry.chatType, nil, entry.target or entry.channel, { raw = true })
             sent = sent + 1
         end
     end

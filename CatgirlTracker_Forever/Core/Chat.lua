@@ -1,6 +1,7 @@
 -- One outgoing chat path. Installed once on ADDON_LOADED.
 -- Feature files call CCT.Chat.Send. They do not replace the chat globals.
--- opts.raw skips gag and Nya. A secret is sent unchanged and is not concatenated.
+-- opts.raw skips gag and Nya. Addon lines pass raw. Only typed chat is rewritten.
+-- A secret is sent unchanged and is not concatenated.
 
 local ADDON_NAME, CCT = ...
 

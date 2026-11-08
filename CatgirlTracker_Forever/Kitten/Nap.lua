@@ -61,7 +61,7 @@ local function Announce(key)
         return
     end
     if type(IsInGuild) ~= "function" or IsInGuild() then
-        CCT.Chat.Send(CCT.Msg(key), "GUILD")
+        CCT.Chat.Send(CCT.Msg(key), "GUILD", nil, nil, { raw = true })
     end
 end
 

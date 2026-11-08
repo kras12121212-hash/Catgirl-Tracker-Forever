@@ -1,4 +1,5 @@
 -- Pictures from current state. A popup lasts 5 seconds. Removal does not pop.
+-- The popup hides itself. It does not wait on the net pump.
 -- The binds strip is derived, not a growing log. The ring holds 30 entries.
 -- This file does not send addon messages.
 
@@ -19,6 +20,16 @@ local baseline = nil
 local listening = false
 local showing = nil
 local hideAt = nil
+
+local function Clock(passed)
+    if type(GetTime) == "function" then
+        return GetTime()
+    end
+    if tonumber(passed) ~= nil then
+        return tonumber(passed)
+    end
+    return CCT.UnixNow()
+end
 
 local function Icon(fileName)
     if type(fileName) ~= "string" or fileName == "" then
@@ -188,11 +199,22 @@ local function EnsurePopup()
     popup = CreateFrame("Frame", "CatgirlPicturePopup", UIParent)
     popup:SetSize(POPUP_SIZE, POPUP_SIZE)
     popup:SetPoint("CENTER", UIParent, "CENTER", 0, 120)
+    if popup.EnableMouse then
+        popup:EnableMouse(false)
+    end
     popup:Hide()
     local tex = popup:CreateTexture(nil, "OVERLAY")
     tex:SetSize(POPUP_SIZE, POPUP_SIZE)
     tex:SetPoint("CENTER")
+    if tex.Hide then
+        tex:Hide()
+    end
     popup.texture = tex
+    if popup.SetScript then
+        popup:SetScript("OnUpdate", function()
+            CCT.Pictures.Tick()
+        end)
+    end
     return popup
 end
 
@@ -216,9 +238,26 @@ local function EnsureStrip()
     return strip
 end
 
+local function HidePopup()
+    showing = nil
+    hideAt = nil
+    if popup == nil then
+        return
+    end
+    if popup.texture and popup.texture.Hide then
+        popup.texture:Hide()
+    end
+    if popup.Hide then
+        popup:Hide()
+    end
+end
+
 local function ShowIcon(icon, size, now)
+    local same = showing ~= nil and showing.icon == icon and hideAt ~= nil
     showing = { icon = icon, size = size }
-    hideAt = (tonumber(now) or CCT.UnixNow()) + SHOW_SECONDS
+    if not same then
+        hideAt = Clock(now) + SHOW_SECONDS
+    end
     local frame = EnsurePopup()
     if frame == nil then
         return
@@ -228,6 +267,9 @@ local function ShowIcon(icon, size, now)
         frame.texture:SetSize(size, size)
         if frame.texture.SetTexture then
             frame.texture:SetTexture(icon)
+        end
+        if frame.texture.Show then
+            frame.texture:Show()
         end
     end
     frame:Show()
@@ -260,14 +302,10 @@ function CCT.Pictures.Tick(now)
     if hideAt == nil or showing == nil then
         return
     end
-    if (tonumber(now) or CCT.UnixNow()) < hideAt then
+    if Clock(now) < hideAt then
         return
     end
-    showing = nil
-    hideAt = nil
-    if popup and popup.Hide then
-        popup:Hide()
-    end
+    HidePopup()
 end
 
 local function DrawStrip(icons)

@@ -227,7 +227,7 @@ local function Say(chatType, text)
         return
     end
     if CCT.Chat and CCT.Chat.Send then
-        CCT.Chat.Send(text, chatType)
+        CCT.Chat.Send(text, chatType, nil, nil, { raw = true })
     end
 end
 

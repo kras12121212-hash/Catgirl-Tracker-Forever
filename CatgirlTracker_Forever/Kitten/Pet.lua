@@ -277,7 +277,7 @@ local function Announce(key)
     if type(IsInGuild) == "function" and IsInGuild() ~= true then
         return false
     end
-    CCT.Chat.Send(CCT.Msg(key), "GUILD")
+    CCT.Chat.Send(CCT.Msg(key), "GUILD", nil, nil, { raw = true })
     return true
 end
 

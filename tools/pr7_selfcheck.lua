@@ -542,9 +542,12 @@ bind("Petal")
 CCT.Ledger.OnLogin(W45)
 CCT.db.settings.flavorAnnouncements = true
 clear(chats)
+CCT.Gag.Set("huge")
 check("a headpet counts", CCT.Headpet.Emote("Alice pets you.", "Alice", W45) == true and counters().pets == 1)
 check("the sender pair is stored", CCT.Ledger.Senders()[1] == "pets:Alice")
 check("headpet flavor goes to guild", #chats >= 1 and chats[#chats].chatType == "GUILD" and chats[#chats].msg:find("Headpet", 1, true) ~= nil)
+check("a worn gag leaves addon guild text alone", CCT.State.Get().gag == "huge" and chats[#chats].msg:find("Headpet", 1, true) ~= nil and chats[#chats].msg:find("mmf", 1, true) == nil)
+CCT.Gag.Set("none")
 local petsNow = counters().pets
 check("the same sender is on cooldown", CCT.Headpet.Emote("Alice pets you.", "Alice", W45 + 30) == false and counters().pets == petsNow and #CCT.Ledger.Senders() == 1)
 check("the cooldown ends at 60 seconds", CCT.Headpet.Emote("Alice pets you.", "Alice", W45 + 60) == true and counters().pets == petsNow + 1 and #CCT.Ledger.Senders() == 1)

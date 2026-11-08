@@ -141,7 +141,7 @@ function CCT.Slack.Tick(now)
     end
     if FlavorOn() and CCT.Chat and type(CCT.Chat.Send) == "function" then
         if type(IsInGuild) ~= "function" or IsInGuild() then
-            CCT.Chat.Send(CCT.Msg("INN_SLACKING"), "GUILD")
+            CCT.Chat.Send(CCT.Msg("INN_SLACKING"), "GUILD", nil, nil, { raw = true })
         end
     end
     return true

@@ -525,6 +525,11 @@ local beforePics = #(CCT.Saved.EnsureChar("Kitten").pictures)
 CCT.State.SetGag("huge")
 local pics = CCT.Saved.EnsureChar("Kitten").pictures
 check("gag popup is recorded", #pics == beforePics + 1 and pics[#pics].icon:find("Heavy-gag", 1, true) ~= nil)
+local shownAt = CCT.UnixNow()
+CCT.Pictures.Tick(shownAt)
+check("gag popup stays inside five seconds", CCT.Pictures.Current() ~= nil)
+CCT.Pictures.Tick(shownAt + 5)
+check("gag popup hides after five seconds", CCT.Pictures.Current() == nil)
 local afterOn = #pics
 CCT.State.SetGag("none")
 check("removal does not pop", #CCT.Saved.EnsureChar("Kitten").pictures == afterOn)

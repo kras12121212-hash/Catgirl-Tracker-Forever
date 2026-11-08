@@ -51,11 +51,11 @@ local function Announce(text)
         return
     end
     if type(IsInGuild) ~= "function" or IsInGuild() then
-        CCT.Chat.Send(text, "GUILD")
+        CCT.Chat.Send(text, "GUILD", nil, nil, { raw = true })
     end
     local channel = GroupChannel()
     if channel ~= nil then
-        CCT.Chat.Send(text, channel)
+        CCT.Chat.Send(text, channel, nil, nil, { raw = true })
     end
 end
 
