@@ -11,4 +11,9 @@ Core/Messages.lua
 Core/Player.lua
 Core/Roster.lua
 Core/Move.lua
+Core/Chat.lua
 Kitten/State.lua
+Kitten/Gag.lua
+Kitten/Blindfold.lua
+Kitten/Ears.lua
+Kitten/Nya.lua

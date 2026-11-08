@@ -96,7 +96,7 @@ check("no per character saved vars", toc:find("SavedVariablesPerCharacter", 1, t
 local tocCompact = toc:gsub("%s+", " ")
 check(
     "toc order",
-    tocCompact:find("Core/Namespace.lua Core/Saved.lua Core/Debug.lua Core/Messages.lua Core/Player.lua Core/Roster.lua Core/Move.lua Kitten/State.lua", 1, true) ~= nil
+    tocCompact:find("Core/Namespace.lua Core/Saved.lua Core/Debug.lua Core/Messages.lua Core/Player.lua Core/Roster.lua Core/Move.lua Core/Chat.lua Kitten/State.lua", 1, true) ~= nil
 )
 
 local forbidden = {
