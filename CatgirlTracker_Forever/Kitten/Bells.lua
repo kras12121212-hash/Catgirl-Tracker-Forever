@@ -88,8 +88,12 @@ local function StopWatch()
     watchTicker = nil
 end
 
-local function StopPlaying(which)
+local function StopPlaying(which, notify)
+    if notify == nil then
+        notify = true
+    end
     local handle = handles[which]
+    local wasPlaying = handle ~= nil
     handles[which] = nil
     playingUntil[which] = 0
     if type(handle) == "number" and type(StopSound) == "function" then
@@ -97,6 +101,9 @@ local function StopPlaying(which)
     end
     if not AnyPlaying() then
         StopWatch()
+    end
+    if notify and wasPlaying and CCT.Report and type(CCT.Report.BellProx) == "function" then
+        CCT.Report.BellProx(which, "stop")
     end
 end
 
@@ -141,7 +148,7 @@ local function Play(which)
     if file == nil then
         return
     end
-    StopPlaying(which)
+    StopPlaying(which, false)
     local handle = true
     if type(PlaySoundFile) == "function" then
         local first, second = PlaySoundFile(Media("Sounds\\" .. file), "Master")
@@ -154,6 +161,9 @@ local function Play(which)
     handles[which] = handle
     playingUntil[which] = Now() + WATCH_SECONDS
     EnsureWatch()
+    if CCT.Report and type(CCT.Report.BellProx) == "function" then
+        CCT.Report.BellProx(which, "play")
+    end
 end
 
 local function Arm(which)

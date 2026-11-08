@@ -12,6 +12,7 @@ Core/Player.lua
 Core/Roster.lua
 Core/Move.lua
 Core/Chat.lua
+Core/Net.lua
 Kitten/State.lua
 Kitten/Gag.lua
 Kitten/Blindfold.lua
@@ -30,3 +31,9 @@ Kitten/Heat.lua
 Kitten/Submissiveness.lua
 Kitten/SoundEngine.lua
 Kitten/Discipline.lua
+Kitten/Report.lua
+Kitten/Pictures.lua
+Owner/Corroboration.lua
+Owner/Map.lua
+Owner/Advertise.lua
+Owner/ControlCenter.lua

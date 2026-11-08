@@ -424,7 +424,7 @@ check(
     "toc loads mittens heels bells after nya",
     toc:find("Kitten/Nya.lua\nKitten/Mittens.lua\nKitten/Heels.lua\nKitten/Bells.lua", 1, true) ~= nil
 )
-check("toc has no net", toc:find("Net.lua", 1, true) == nil)
+check("toc lists net", toc:find("Core/Net.lua", 1, true) ~= nil)
 
 local function bans(label, text)
     local words = {

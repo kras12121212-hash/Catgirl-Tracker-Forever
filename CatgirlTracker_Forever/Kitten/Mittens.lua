@@ -551,6 +551,9 @@ function CCT.Mittens.OnSpell()
     if type(PlaySoundFile) == "function" then
         PlaySoundFile(SoundPath(kind), "Master")
     end
+    if CCT.Report and type(CCT.Report.MittenProx) == "function" then
+        CCT.Report.MittenProx(kind)
+    end
 end
 
 function CCT.Mittens.OnEvent(_, event, arg1)

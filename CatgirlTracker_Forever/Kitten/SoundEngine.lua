@@ -177,6 +177,9 @@ local function Note(body)
     while #list > UNSENT_CAP do
         table.remove(list, 1)
     end
+    if CCT.Report and type(CCT.Report.SoundNote) == "function" then
+        CCT.Report.SoundNote(body)
+    end
 end
 
 local function OwnerShort()

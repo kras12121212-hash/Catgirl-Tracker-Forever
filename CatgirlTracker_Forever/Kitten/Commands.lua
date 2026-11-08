@@ -1,8 +1,8 @@
 -- Cmd intake. A command applies only when the sender is the owner.
 -- An empty roster cache holds the command for 10 seconds, then drops it.
--- /cctcmd is temporary. It runs a Cmd on this client. PR 6 deletes it.
+-- /cctcmd is deleted. Slash() remains a local bypass for tests.
 -- This file does not send addon messages. It does not move feature state.
--- disc, group, and maid wait for later PRs. A handler may replace those stubs.
+-- Maid handlers stay until a later PR. A handler may replace those stubs.
 
 local ADDON_NAME, CCT = ...
 
@@ -521,6 +521,13 @@ function CCT.Commands.Pending()
     return #held
 end
 
+local function Deliver(sender, result)
+    if type(result) == "table" and not result.held and CCT.Report and type(CCT.Report.OnCommand) == "function" then
+        CCT.Report.OnCommand(sender, result)
+    end
+    return result
+end
+
 function CCT.Commands.Apply(sender, fields)
     if type(fields) ~= "table" or type(fields.op) ~= "string" then
         return Result(false, "parse", fields)
@@ -557,7 +564,7 @@ function CCT.Commands.Flush(now)
             if ready and AcceptSender(item.sender) then
                 local fields = CCT.Commands.Parse(item.text)
                 if fields then
-                    CCT.Commands.Apply(item.sender, fields)
+                    Deliver(item.sender, CCT.Commands.Apply(item.sender, fields))
                 end
             end
         end
@@ -579,7 +586,7 @@ function CCT.Commands.Receive(sender, text, now, localBypass)
             return Result(false, "owner", fields)
         end
     end
-    return CCT.Commands.Apply(sender, fields)
+    return Deliver(sender, CCT.Commands.Apply(sender, fields))
 end
 
 function CCT.Commands.Slash(text)
@@ -617,11 +624,4 @@ if CreateFrame then
     frame:RegisterEvent("PLAYER_ENTERING_WORLD")
     frame:RegisterEvent("GUILD_ROSTER_UPDATE")
     frame:SetScript("OnEvent", CCT.Commands.OnEvent)
-end
-
-SLASH_CCTCMD1 = "/cctcmd"
-if SlashCmdList then
-    SlashCmdList.CCTCMD = function(msg)
-        CCT.Commands.Slash(msg)
-    end
 end

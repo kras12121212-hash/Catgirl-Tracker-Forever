@@ -312,9 +312,20 @@ end
 
 local function DriveSound(action)
     if action == "play" then
+        local started = not soundActive
         StartSound()
+        if CCT.Report and type(CCT.Report.HeelProx) == "function" then
+            if started then
+                CCT.Report.HeelProx(active, "start")
+            end
+            CCT.Report.HeelProx(active, "ping")
+        end
     elseif action == "stop" then
+        local wasPlaying = soundActive
         StopHeelSound()
+        if wasPlaying and CCT.Report and type(CCT.Report.HeelProx) == "function" then
+            CCT.Report.HeelProx(active, "stop")
+        end
     end
 end
 

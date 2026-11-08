@@ -455,8 +455,8 @@ check(
     "toc order",
     toc:find("Kitten/Bells.lua\nKitten/Leash.lua\nKitten/Chastity.lua\nKitten/Toys.lua\nKitten/Locks.lua\nKitten/Commands.lua\nKitten/HeatConfig.lua\nKitten/Heat.lua\nKitten/Submissiveness.lua\nKitten/SoundEngine.lua\nKitten/Discipline.lua", 1, true) ~= nil
 )
-check("toc has no net", toc:find("Net.lua", 1, true) == nil)
-check("no net file", io.open(addon .. "/Core/Net.lua", "rb") == nil)
+check("toc lists net", toc:find("Core/Net.lua", 1, true) ~= nil)
+check("net file exists", io.open(addon .. "/Core/Net.lua", "rb") ~= nil)
 check("heat follows commands", toc:find("Kitten/Commands.lua\nKitten/HeatConfig.lua", 1, true) ~= nil)
 
 local banned = {
@@ -494,7 +494,7 @@ check("toy shock table", sources.toys:find("-5", 1, true) ~= nil and sources.toy
 check("toy taill spelling", sources.toys:find("taill_butplug", 1, true) ~= nil)
 check("locks skip the blindfold debug line", sources.locks:find("ttttttttt", 1, true) == nil)
 check("commands hold for 10 seconds", sources.commands:find("local HOLD_SECONDS = 10", 1, true) ~= nil)
-check("commands register a slash", sources.commands:find('SLASH_CCTCMD1 = "/cctcmd"', 1, true) ~= nil)
+check("commands do not register a slash", sources.commands:find("SLASH_CCTCMD1", 1, true) == nil)
 check("commands do not call mitten setter", sources.commands:find("Mittens.Set", 1, true) == nil)
 check("commands do not call heel setter", sources.commands:find("Heels.Set", 1, true) == nil)
 check("commands do not call bell setter", sources.commands:find("Bells.Set", 1, true) == nil)
@@ -585,7 +585,7 @@ end
 fire("PLAYER_LOGIN")
 check("player ready", CCT.Player.ready == true and CCT.Player.short == "Kitten")
 check("login is quiet", #lines == 0 and #sent == 0 and #notices == 0)
-check("slash registered", SLASH_CCTCMD1 == "/cctcmd" and type(SlashCmdList.CCTCMD) == "function")
+check("slash is not registered", SLASH_CCTCMD1 == nil and SlashCmdList.CCTCMD == nil)
 
 local quietLines = #lines
 local quietNotices = #notices
@@ -712,7 +712,7 @@ check("realm owner applies when the note arrives", state().ears == "kitten" and 
 check("earmuffs announce", hasLine("Kitten earmuffs applied. Words sound cuter now nya~") and hasNotice("Earmuffs applied: kitten."))
 
 local tasksBefore = state().counters.tasks
-for _, op in ipairs({ "group", "maid", "maiditem", "maidtext" }) do
+for _, op in ipairs({ "maid", "maiditem", "maidtext" }) do
     local result = cmd("Cmd,op:" .. op .. ",cid:Later1")
     check(
         op .. " waits",

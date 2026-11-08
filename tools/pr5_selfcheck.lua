@@ -444,9 +444,9 @@ check(
     "toc order",
     toc:find("Kitten/Commands.lua\nKitten/HeatConfig.lua\nKitten/Heat.lua\nKitten/Submissiveness.lua\nKitten/SoundEngine.lua\nKitten/Discipline.lua", 1, true) ~= nil
 )
-check("toc has no net", toc:find("Net.lua", 1, true) == nil)
-check("no net file", io.open(addon .. "/Core/Net.lua", "rb") == nil)
-check("no pictures file", io.open(addon .. "/Kitten/Pictures.lua", "rb") == nil)
+check("toc lists net", toc:find("Core/Net.lua", 1, true) ~= nil)
+check("net file exists", io.open(addon .. "/Core/Net.lua", "rb") ~= nil)
+check("pictures file exists", io.open(addon .. "/Kitten/Pictures.lua", "rb") ~= nil)
 
 local featureRoots = {
     "Kitten/HeatConfig.lua",
