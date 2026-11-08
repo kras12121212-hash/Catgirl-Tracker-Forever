@@ -1,4 +1,6 @@
 -- Owner control center. /cgcc reads the snapshot and enqueues Cmd.
+-- The window opens with no assigned kitten. Kitten actions stay disabled until one is assigned.
+-- A draggable cgcc button opens the same window. Nya and advertise stay available. They belong to this character.
 -- Buttons do not call SendAddonMessage. Counting waits for Success and Ack ok:1.
 -- The maid editor is CCT.Maid. Picture popups, the binds strip, and advertise already shipped.
 -- Force group is Cmd op group. KittyLayerGroup.lua layer list, linv, and the NWB read do not ship. The classic leave-first frame does not ship either.
@@ -462,6 +464,224 @@ function CCT.Control.Press(id, hoursText, kitten)
     })
 end
 
+local launcher = nil
+
+local function HasKitten()
+    return KittenName() ~= nil
+end
+
+local function SetWidgetEnabled(widget, enabled)
+    if widget == nil then
+        return
+    end
+    widget.cctEnabled = enabled == true
+    if type(widget.SetEnabled) == "function" then
+        widget:SetEnabled(enabled == true)
+    end
+end
+
+local function ApplyAccess()
+    if window == nil then
+        return
+    end
+    local owned = HasKitten()
+    local rows = window.rows
+    if type(rows) == "table" then
+        for i = 1, #rows do
+            local row = rows[i]
+            local localOnly = type(row.spec) == "table" and row.spec.localOnly == true
+            SetWidgetEnabled(row.button, owned or localOnly)
+        end
+    end
+    SetWidgetEnabled(window.hours, owned)
+end
+
+local function StatusLine(summary)
+    local name = type(summary) == "table" and summary.kitten or nil
+    if type(name) ~= "string" or name == "" then
+        return "Kitten: None assigned"
+    end
+    if summary.text == "no snapshot" then
+        return "Kitten: " .. name .. ". no snapshot"
+    end
+    return string.format("Kitten: %s. heat %s sub %s", name, tostring(summary.heat), tostring(summary.sub))
+end
+
+local function OnRowClick(spec)
+    if spec.localOnly ~= true and not HasKitten() then
+        return false
+    end
+    return CCT.Control.Press(spec.id, CCT.Control.Hours())
+end
+
+local function BuildRows(parent)
+    local rows = {}
+    for i = 1, #BUTTONS do
+        local spec = BUTTONS[i]
+        local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+        if button.SetSize then
+            button:SetSize(340, 20)
+        end
+        if button.SetPoint then
+            button:SetPoint("TOPLEFT", 8, -4 - ((i - 1) * 22))
+        end
+        if button.SetText then
+            button:SetText(spec.label)
+        end
+        if button.RegisterForClicks then
+            button:RegisterForClicks("LeftButtonUp")
+        end
+        if button.SetScript then
+            button:SetScript("OnClick", function()
+                OnRowClick(spec)
+            end)
+        end
+        rows[i] = { id = spec.id, spec = spec, button = button }
+    end
+    return rows
+end
+
+local function OnMouseWheel(self, delta)
+    if type(self.GetVerticalScroll) ~= "function" or type(self.SetVerticalScroll) ~= "function" then
+        return
+    end
+    local current = self:GetVerticalScroll()
+    if type(current) ~= "number" then
+        return
+    end
+    local nextScroll = current - ((tonumber(delta) or 0) * 22)
+    if nextScroll < 0 then
+        nextScroll = 0
+    end
+    local child = type(self.GetScrollChild) == "function" and self:GetScrollChild() or nil
+    local maxScroll = 0
+    if type(child) == "table" and type(child.GetHeight) == "function" and type(self.GetHeight) == "function" then
+        local content = child:GetHeight()
+        local view = self:GetHeight()
+        if type(content) == "number" and type(view) == "number" then
+            maxScroll = content - view
+        end
+    end
+    if maxScroll < 0 then
+        maxScroll = 0
+    end
+    if nextScroll > maxScroll then
+        nextScroll = maxScroll
+    end
+    self:SetVerticalScroll(nextScroll)
+end
+
+local function LauncherChar(create)
+    local short = CCT.Player and CCT.Player.short
+    if type(short) ~= "string" or short == "" or CCT.Saved == nil then
+        return nil
+    end
+    if create and type(CCT.Saved.EnsureChar) == "function" then
+        return CCT.Saved.EnsureChar(short)
+    end
+    local db = CCT.db
+    if type(db) ~= "table" or type(db.chars) ~= "table" then
+        return nil
+    end
+    local char = db.chars[short]
+    if type(char) ~= "table" then
+        return nil
+    end
+    return char
+end
+
+local function SaveLauncher(frame)
+    if frame == nil or type(frame.GetPoint) ~= "function" then
+        return
+    end
+    local point, _, relativePoint, x, y = frame:GetPoint(1)
+    if type(point) ~= "string" then
+        return
+    end
+    local char = LauncherChar(true)
+    if char == nil then
+        return
+    end
+    char.cgccButton = {
+        point = point,
+        relativePoint = type(relativePoint) == "string" and relativePoint or point,
+        x = tonumber(x) or 0,
+        y = tonumber(y) or -210,
+    }
+end
+
+local function ApplyLauncherPoint(frame)
+    if frame == nil or type(frame.SetPoint) ~= "function" then
+        return
+    end
+    local char = LauncherChar(false)
+    local saved = char and char.cgccButton
+    if type(saved) ~= "table" or type(saved.point) ~= "string" then
+        frame:SetPoint("TOP", UIParent, "TOP", 0, -210)
+        return
+    end
+    if type(frame.ClearAllPoints) == "function" then
+        frame:ClearAllPoints()
+    end
+    frame:SetPoint(saved.point, UIParent, saved.relativePoint or saved.point, saved.x or 0, saved.y or -210)
+end
+
+function CCT.Control.Launcher()
+    return launcher
+end
+
+function CCT.Control.EnsureLauncher()
+    if launcher ~= nil or type(CreateFrame) ~= "function" or UIParent == nil then
+        return launcher
+    end
+    launcher = CreateFrame("Button", "CatgirlControlCenterOpenButton", UIParent, "UIPanelButtonTemplate")
+    if launcher == nil then
+        return nil
+    end
+    if launcher.SetSize then
+        launcher:SetSize(80, 24)
+    end
+    ApplyLauncherPoint(launcher)
+    if launcher.SetText then
+        launcher:SetText("cgcc")
+    end
+    if launcher.SetMovable then
+        launcher:SetMovable(true)
+    end
+    if launcher.EnableMouse then
+        launcher:EnableMouse(true)
+    end
+    if launcher.RegisterForClicks then
+        launcher:RegisterForClicks("LeftButtonUp")
+    end
+    if launcher.RegisterForDrag then
+        launcher:RegisterForDrag("LeftButton")
+    end
+    if launcher.SetClampedToScreen then
+        launcher:SetClampedToScreen(true)
+    end
+    if launcher.SetScript then
+        launcher:SetScript("OnDragStart", function(self)
+            if self.StartMoving then
+                self:StartMoving()
+            end
+        end)
+        launcher:SetScript("OnDragStop", function(self)
+            if self.StopMovingOrSizing then
+                self:StopMovingOrSizing()
+            end
+            SaveLauncher(self)
+        end)
+        launcher:SetScript("OnClick", function()
+            CCT.Control.Toggle()
+        end)
+    end
+    if launcher.Show then
+        launcher:Show()
+    end
+    return launcher
+end
+
 local function Supports()
     if ready ~= nil then
         return ready
@@ -486,43 +706,155 @@ local function Supports()
     return true
 end
 
+function CCT.Control.Refresh()
+    if window == nil then
+        return nil
+    end
+    local summary = CCT.Control.Summary()
+    if window.status and window.status.SetText then
+        window.status:SetText(StatusLine(summary))
+    end
+    if window.maid and window.maid.SetText then
+        window.maid:SetText(select(2, CCT.Control.MaidShell()))
+    end
+    ApplyAccess()
+    return window
+end
+
 function CCT.Control.Open()
     if not Supports() then
         return nil
     end
     if window == nil then
-        window = CreateFrame("Frame", "CatgirlControlCenter", UIParent)
+        window = CreateFrame("Frame", "CatgirlControlCenter", UIParent, "BackdropTemplate")
         window:SetSize(420, 520)
         window:SetPoint("CENTER")
         window:SetClampedToScreen(true)
         window:SetMovable(true)
         window:EnableMouse(true)
-        local scroll = CreateFrame("ScrollFrame", nil, window)
-        scroll:SetAllPoints()
-        local child = CreateFrame("Frame", nil, scroll)
-        child:SetSize(400, 40 + (#BUTTONS * 22))
-        scroll:SetScrollChild(child)
+        if window.SetFrameStrata then
+            window:SetFrameStrata("DIALOG")
+        end
+        if window.SetBackdrop then
+            window:SetBackdrop({
+                bgFile = "Interface\\DialogFrame\\UI-DialogBox-Background",
+                edgeFile = "Interface\\Tooltips\\UI-Tooltip-Border",
+                tile = true,
+                tileSize = 16,
+                edgeSize = 8,
+                insets = { left = 4, right = 4, top = 4, bottom = 4 },
+            })
+        end
+        if window.SetBackdropColor then
+            window:SetBackdropColor(0, 0, 0, 0.85)
+        end
+        if window.RegisterForDrag then
+            window:RegisterForDrag("LeftButton")
+        end
+        if window.SetScript then
+            window:SetScript("OnDragStart", function(self)
+                if self.StartMoving then
+                    self:StartMoving()
+                end
+            end)
+            window:SetScript("OnDragStop", function(self)
+                if self.StopMovingOrSizing then
+                    self:StopMovingOrSizing()
+                end
+            end)
+        end
+        local title = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        if title and title.SetPoint then
+            title:SetPoint("TOPLEFT", 12, -10)
+        end
+        if title and title.SetText then
+            title:SetText("Catgirl Control")
+        end
+        local close = CreateFrame("Button", nil, window, "UIPanelButtonTemplate")
+        if close.SetSize then
+            close:SetSize(56, 18)
+        end
+        if close.SetPoint then
+            close:SetPoint("TOPRIGHT", -8, -8)
+        end
+        if close.SetText then
+            close:SetText("Close")
+        end
+        if close.SetScript then
+            close:SetScript("OnClick", function()
+                window:Hide()
+            end)
+        end
+        window.status = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        if window.status.SetPoint then
+            window.status:SetPoint("TOPLEFT", 12, -32)
+        end
+        local hoursLabel = window:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        if hoursLabel and hoursLabel.SetPoint then
+            hoursLabel:SetPoint("TOPLEFT", 12, -52)
+        end
+        if hoursLabel and hoursLabel.SetText then
+            hoursLabel:SetText("Hours")
+        end
         window.hours = CreateFrame("EditBox", nil, window)
         window.hours:SetText("1.5")
-        window.status = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
+        if window.hours.SetSize then
+            window.hours:SetSize(48, 18)
+        end
+        if window.hours.SetPoint then
+            window.hours:SetPoint("TOPLEFT", 58, -50)
+        end
+        if window.hours.SetAutoFocus then
+            window.hours:SetAutoFocus(false)
+        end
+        if window.hours.SetFont then
+            window.hours:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
+        end
+        if window.hours.SetScript then
+            window.hours:SetScript("OnEnterPressed", function(self)
+                if self.ClearFocus then
+                    self:ClearFocus()
+                end
+            end)
+            window.hours:SetScript("OnEscapePressed", function(self)
+                if self.ClearFocus then
+                    self:ClearFocus()
+                end
+            end)
+        end
         window.maid = window:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+        if window.maid.SetPoint then
+            window.maid:SetPoint("TOPLEFT", 120, -52)
+        end
+        local scroll = CreateFrame("ScrollFrame", nil, window)
+        if scroll.SetPoint then
+            scroll:SetPoint("TOPLEFT", 8, -74)
+            scroll:SetPoint("BOTTOMRIGHT", -12, 270)
+        end
+        local child = CreateFrame("Frame", nil, scroll)
+        if child.SetSize then
+            child:SetSize(380, 8 + (#BUTTONS * 22))
+        end
+        if scroll.SetScrollChild then
+            scroll:SetScrollChild(child)
+        end
+        if scroll.EnableMouseWheel then
+            scroll:EnableMouseWheel(true)
+        end
+        if scroll.SetScript then
+            scroll:SetScript("OnMouseWheel", OnMouseWheel)
+        end
+        window.rows = BuildRows(child)
         if CCT.NyaOptions and type(CCT.NyaOptions.Attach) == "function" then
             CCT.NyaOptions.Attach(window)
         end
         window:Hide()
     end
-    local summary = CCT.Control.Summary()
-    if window.status and window.status.SetText then
-        if summary.text == "no snapshot" then
-            window.status:SetText("no snapshot")
-        else
-            window.status:SetText(string.format("heat %s sub %s", tostring(summary.heat), tostring(summary.sub)))
-        end
-    end
-    if window.maid and window.maid.SetText then
-        window.maid:SetText(select(2, CCT.Control.MaidShell()))
-    end
+    CCT.Control.Refresh()
     window:Show()
+    if window.Raise then
+        window:Raise()
+    end
     return window
 end
 
@@ -552,4 +884,25 @@ if SlashCmdList then
         end
         CCT.Control.Toggle()
     end
+end
+
+if type(CreateFrame) == "function" then
+    local events = CreateFrame("Frame")
+    events:RegisterEvent("PLAYER_LOGIN")
+    events:RegisterEvent("PLAYER_ENTERING_WORLD")
+    events:RegisterEvent("GUILD_ROSTER_UPDATE")
+    events:SetScript("OnEvent", function(_, event)
+        if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
+            local frame = CCT.Control.EnsureLauncher()
+            ApplyLauncherPoint(frame)
+            return
+        end
+        if window ~= nil and window.IsShown and window:IsShown() then
+            CCT.Control.Refresh()
+        end
+    end)
+end
+
+if type(CreateFrame) == "function" and UIParent ~= nil then
+    CCT.Control.EnsureLauncher()
 end

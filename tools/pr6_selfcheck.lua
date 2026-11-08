@@ -619,6 +619,57 @@ check("advertise is not listed", table.concat(moduleNames, ",") :find("Advertise
 local far = CCT.Control.Press("disc-spank_hand-butt")
 check("discipline without a jewel does not send", far == false and lines[#lines] == CCT.Msg("DISCIPLINE_TOO_FAR"))
 
+local assignedKitten = CCT.Roster.GetAssignedKitten
+CCT.Roster.GetAssignedKitten = function()
+    return nil
+end
+local sendsBeforeBrowse = #sends
+local browse = CCT.Control.Open()
+local function controlRow(id)
+    local rows = browse and browse.rows or {}
+    for i = 1, #rows do
+        if rows[i].id == id then
+            return rows[i]
+        end
+    end
+    return nil
+end
+local gagRow = controlRow("gag-heavy")
+local adRow = controlRow("advertise")
+check(
+    "control center opens with no kitten",
+    browse ~= nil
+        and browse.status
+        and browse.status:GetText() == "Kitten: None assigned"
+        and gagRow ~= nil
+        and gagRow.button.cctEnabled == false
+        and browse.hours.cctEnabled == false
+        and adRow ~= nil
+        and adRow.button.cctEnabled == true
+        and adRow.button:GetText() == "Advertise"
+)
+local gagClick = gagRow and gagRow.button.scripts and gagRow.button.scripts.OnClick
+if gagClick then
+    gagClick()
+end
+check("disabled control does not send", #sends == sendsBeforeBrowse and CCT.Control.Press("gag-heavy") == false)
+CCT.Roster.GetAssignedKitten = assignedKitten
+CCT.Control.Open()
+check(
+    "assigned kitten enables controls",
+    controlRow("gag-heavy").button.cctEnabled == true
+        and browse.hours.cctEnabled == true
+        and browse.status:GetText():find("Kitten: Kitten", 1, true) == 1
+)
+local launcher = CCT.Control.Launcher()
+check("cgcc button is shown", launcher ~= nil and launcher:GetText() == "cgcc" and launcher:IsShown() == true)
+if launcher and launcher.scripts and launcher.scripts.OnClick then
+    launcher.scripts.OnClick()
+    check("cgcc button hides the open window", browse:IsShown() == false)
+    launcher.scripts.OnClick()
+    check("cgcc button shows the window again", browse:IsShown() == true)
+end
+
 if failures > 0 then
     stdout(failures .. " failed")
     os.exit(1)
