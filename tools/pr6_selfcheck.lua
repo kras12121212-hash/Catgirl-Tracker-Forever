@@ -641,6 +641,15 @@ check(
     browse ~= nil
         and browse.status
         and browse.status:GetText() == "Kitten: None assigned"
+        and browse.statsText
+        and browse.statsText:GetText():find("most Functions not avilable", 1, true) ~= nil
+        and browse.selectedTab == "Stats"
+        and browse.tabs.Stats:IsShown() == true
+        and browse.tabs.Control:IsShown() == false
+        and browse.tabs.Toys:IsShown() == false
+        and browse.tabs.Discipline:IsShown() == false
+        and browse.tabs.Settings:IsShown() == false
+        and browse.tabButtons.Control:GetText() == "Control"
         and gagRow ~= nil
         and gagRow.button.cctEnabled == false
         and browse.hours.cctEnabled == false
@@ -648,6 +657,11 @@ check(
         and adRow.button.cctEnabled == true
         and adRow.button:GetText() == "Advertise"
 )
+if browse.ShowTab then
+    browse.ShowTab("Toys")
+end
+check("toys tab is its own page", browse.tabs.Toys:IsShown() == true and browse.tabs.Stats:IsShown() == false)
+browse.ShowTab("Stats")
 local gagClick = gagRow and gagRow.button.scripts and gagRow.button.scripts.OnClick
 if gagClick then
     gagClick()

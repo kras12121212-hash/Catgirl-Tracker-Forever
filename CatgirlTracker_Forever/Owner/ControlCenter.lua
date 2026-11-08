@@ -1,5 +1,6 @@
 -- Owner control center. /cgcc reads the snapshot and enqueues Cmd.
 -- The window opens with no assigned kitten. Kitten actions stay disabled until one is assigned.
+-- Tabs match the classic panel: Stats, Control, Toys, Discipline, Settings.
 -- A draggable cgcc button opens the same window. Nya and advertise stay available. They belong to this character.
 -- Buttons do not call SendAddonMessage. Counting waits for Success and Ack ok:1.
 -- The maid editor is CCT.Maid. Picture popups, the binds strip, and advertise already shipped.
@@ -404,7 +405,7 @@ local function ToyBlocked(spec, state)
     return false
 end
 
-function CCT.Control.Press(id, hoursText, kitten)
+function CCT.Control.Press(id, hoursText, kitten, overrides)
     local spec = FindButton(id)
     if spec == nil then
         return false, "button"
@@ -457,6 +458,13 @@ function CCT.Control.Press(id, hoursText, kitten)
             fields.inst = tostring(owner.instanceID)
         end
     end
+    if type(overrides) == "table" then
+        for key, value in pairs(overrides) do
+            if value ~= nil then
+                fields[key] = tostring(value)
+            end
+        end
+    end
     return CCT.Control.Send(name, fields, {
         op = fields.op,
         sentence = sentence,
@@ -507,38 +515,483 @@ local function StatusLine(summary)
     return string.format("Kitten: %s. heat %s sub %s", name, tostring(summary.heat), tostring(summary.sub))
 end
 
-local function OnRowClick(spec)
+local TAB_NAMES = { "Stats", "Control", "Toys", "Discipline", "Settings" }
+
+local CONTROL_GROUPS = {
+    { title = "Leash", ids = { "leash", "unleash" } },
+    {
+        title = "Gags and Masks",
+        ids = { "nya-mask", "gag-small", "gag-heavy", "gag-full", "gag-inflatable", "gag-inflate", "gag-deflate", "ungag", "lock-gag" },
+    },
+    {
+        title = "Blindfolds",
+        ids = { "blind-light", "blind-mask", "blind-full", "blind-off", "lock-blind" },
+    },
+    {
+        title = "Earmuffs",
+        ids = { "ears-kitten", "ears-heavy", "ears-off", "lock-ears" },
+    },
+    {
+        title = "Bells",
+        ids = { "bell-on", "tail-on", "bell-off", "lock-bell", "tail-off", "lock-tail" },
+    },
+    {
+        title = "Mittens",
+        ids = { "mittens-locked", "mittens-squeak", "mittens-off", "lock-mittens" },
+    },
+    {
+        title = "Chastity",
+        ids = { "belt-on", "bra-on", "belt-deny", "belt-allow", "belt-off", "lock-belt", "bra-off", "lock-bra" },
+    },
+    {
+        title = "Heels",
+        ids = { "heels-maid", "heels-high", "heels-ballet", "heels-off", "lock-heels" },
+    },
+    {
+        title = "Tracking",
+        ids = { "jewel-on", "group", "jewel-off" },
+    },
+}
+
+local function OnRowClick(spec, overrides)
     if spec.localOnly ~= true and not HasKitten() then
         return false
     end
-    return CCT.Control.Press(spec.id, CCT.Control.Hours())
+    return CCT.Control.Press(spec.id, CCT.Control.Hours(), nil, overrides)
 end
 
-local function BuildRows(parent)
-    local rows = {}
+local function Widget(widget, method, ...)
+    if widget ~= nil and type(widget[method]) == "function" then
+        return widget[method](widget, ...)
+    end
+    return nil
+end
+
+local function Track(rows, seen, spec, button, id)
+    local rowId = id or spec.id
+    rows[#rows + 1] = { id = rowId, spec = spec, button = button }
+    if rowId == spec.id then
+        seen[spec.id] = true
+    end
+end
+
+local function MakeButton(parent, text, width, height, onClick)
+    local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
+    Widget(button, "SetSize", width or 300, height or 20)
+    Widget(button, "SetText", text or "")
+    Widget(button, "RegisterForClicks", "LeftButtonUp")
+    if button ~= nil and button.SetScript and onClick ~= nil then
+        button:SetScript("OnClick", onClick)
+    end
+    return button
+end
+
+local scrollSerial = 0
+
+local function AddScroll(parent)
+    scrollSerial = scrollSerial + 1
+    local scroll = CreateFrame("ScrollFrame", "CatgirlControlScroll" .. scrollSerial, parent, "UIPanelScrollFrameTemplate")
+    Widget(scroll, "SetAllPoints", parent)
+    local child = CreateFrame("Frame", nil, scroll)
+    Widget(child, "SetSize", 340, 240)
+    Widget(scroll, "SetScrollChild", child)
+    Widget(scroll, "EnableMouseWheel", true)
+    if scroll ~= nil and scroll.SetScript then
+        scroll:SetScript("OnMouseWheel", function(self, delta)
+            if CCT.Control.ScrollWheel then
+                CCT.Control.ScrollWheel(self, delta)
+            end
+        end)
+    end
+    return scroll, child
+end
+
+local function LayoutBlocks(blocks, content, scroll, origin)
+    local y = origin or -4
+    for i = 1, #blocks do
+        local block = blocks[i]
+        if block.Paint then
+            block.Paint()
+        end
+        Widget(block.header, "ClearAllPoints")
+        Widget(block.header, "SetPoint", "TOPLEFT", 4, y)
+        y = y - 24
+        if block.expanded then
+            Widget(block.content, "Show")
+            Widget(block.content, "ClearAllPoints")
+            Widget(block.content, "SetPoint", "TOPLEFT", 8, y)
+            Widget(block.content, "SetHeight", block.height or 20)
+            y = y - (block.height or 20) - 4
+        else
+            Widget(block.content, "Hide")
+            y = y - 2
+        end
+    end
+    Widget(content, "SetHeight", math.max(240, -y + 24))
+    Widget(scroll, "UpdateScrollChildRect")
+end
+
+local function Collapsible(parent, title, layout)
+    local block = { title = title, expanded = false, height = 20 }
+    block.header = MakeButton(parent, "[+] " .. title, 320, 20, function()
+        block.expanded = not block.expanded
+        if layout then
+            layout()
+        end
+    end)
+    block.content = CreateFrame("Frame", nil, parent)
+    Widget(block.content, "SetSize", 320, 20)
+    Widget(block.content, "Hide")
+    function block.Paint()
+        local marker = block.expanded and "[-]" or "[+]"
+        Widget(block.header, "SetText", marker .. " " .. block.title)
+    end
+    block.Paint()
+    return block
+end
+
+local function ActionButton(parent, spec, text, rows, seen, overrides, rowId)
+    local button = MakeButton(parent, text or spec.label, 300, 20, function()
+        OnRowClick(spec, overrides)
+    end)
+    Track(rows, seen, spec, button, rowId)
+    return button
+end
+
+local function PlaceRows(parent, ids, rows, seen)
+    local y = -2
+    for i = 1, #ids do
+        local spec = FindButton(ids[i])
+        if spec ~= nil then
+            local button = ActionButton(parent, spec, spec.label, rows, seen)
+            Widget(button, "SetPoint", "TOPLEFT", 0, y)
+            y = y - 22
+        end
+    end
+    return -y + 4
+end
+
+local function BuildControl(parent, rows, seen)
+    local scroll, child = AddScroll(parent)
+    local hoursLabel = child:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    Widget(hoursLabel, "SetPoint", "TOPLEFT", 8, -6)
+    Widget(hoursLabel, "SetText", "Hours")
+    local hours = CreateFrame("EditBox", nil, child)
+    Widget(hours, "SetText", "1.5")
+    Widget(hours, "SetSize", 48, 18)
+    Widget(hours, "SetPoint", "TOPLEFT", 56, -4)
+    Widget(hours, "SetAutoFocus", false)
+    Widget(hours, "SetFont", "Fonts\\FRIZQT__.TTF", 12, "")
+    if hours.SetScript then
+        hours:SetScript("OnEnterPressed", function(self)
+            Widget(self, "ClearFocus")
+        end)
+        hours:SetScript("OnEscapePressed", function(self)
+            Widget(self, "ClearFocus")
+        end)
+    end
+    local blocks = {}
+    local function Layout()
+        LayoutBlocks(blocks, child, scroll, -28)
+    end
+    for i = 1, #CONTROL_GROUPS do
+        local group = CONTROL_GROUPS[i]
+        local block = Collapsible(child, group.title, Layout)
+        block.height = PlaceRows(block.content, group.ids, rows, seen)
+        blocks[#blocks + 1] = block
+    end
+    Layout()
+    return scroll, child, hours
+end
+
+local function ToyGroups()
+    local order = {}
+    local grouped = {}
     for i = 1, #BUTTONS do
         local spec = BUTTONS[i]
-        local button = CreateFrame("Button", nil, parent, "UIPanelButtonTemplate")
-        if button.SetSize then
-            button:SetSize(340, 20)
+        local fields = spec.fields
+        if type(fields) == "table" and fields.op == "toy" and type(fields.id) == "string" then
+            local bucket = grouped[fields.id]
+            if bucket == nil then
+                bucket = { id = fields.id, label = spec.label, actions = {} }
+                grouped[fields.id] = bucket
+                order[#order + 1] = bucket
+            end
+            bucket.actions[fields.action or ""] = spec
+            if fields.action == "apply" then
+                bucket.label = spec.label
+            end
         end
-        if button.SetPoint then
-            button:SetPoint("TOPLEFT", 8, -4 - ((i - 1) * 22))
-        end
-        if button.SetText then
-            button:SetText(spec.label)
-        end
-        if button.RegisterForClicks then
-            button:RegisterForClicks("LeftButtonUp")
-        end
-        if button.SetScript then
-            button:SetScript("OnClick", function()
-                OnRowClick(spec)
-            end)
-        end
-        rows[i] = { id = spec.id, spec = spec, button = button }
     end
-    return rows
+    return order
+end
+
+local function StrengthRow(parent, spec, maxLevel, key, y, rows, seen)
+    local label = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    Widget(label, "SetPoint", "TOPLEFT", 0, y)
+    Widget(label, "SetText", spec.label)
+    for level = 1, maxLevel do
+        local rowId = spec.id
+        local overrides = nil
+        if level > 1 then
+            rowId = spec.id .. "@" .. level
+            overrides = { [key] = tostring(level) }
+        end
+        local button = ActionButton(parent, spec, tostring(level), rows, seen, overrides, rowId)
+        Widget(button, "SetSize", 22, 20)
+        Widget(button, "SetPoint", "TOPLEFT", 150 + ((level - 1) * 26), y)
+    end
+    return y - 22
+end
+
+local function BuildToys(parent, rows, seen)
+    local scroll, child = AddScroll(parent)
+    local blocks = {}
+    local function Layout()
+        LayoutBlocks(blocks, child, scroll, -4)
+    end
+    local groups = ToyGroups()
+    for i = 1, #groups do
+        local group = groups[i]
+        local block = Collapsible(child, group.label, Layout)
+        local y = -2
+        local apply = group.actions.apply
+        local remove = group.actions.remove
+        if apply then
+            local button = ActionButton(block.content, apply, "Apply", rows, seen)
+            Widget(button, "SetPoint", "TOPLEFT", 0, y)
+            y = y - 22
+        end
+        if remove then
+            local button = ActionButton(block.content, remove, "Remove", rows, seen)
+            Widget(button, "SetPoint", "TOPLEFT", 0, y)
+            y = y - 22
+        end
+        if group.actions.vibe then
+            y = StrengthRow(block.content, group.actions.vibe, 5, "level", y, rows, seen)
+        end
+        if group.actions.shock then
+            y = StrengthRow(block.content, group.actions.shock, 3, "level", y, rows, seen)
+        end
+        if group.actions.inflate then
+            local button = ActionButton(block.content, group.actions.inflate, "Inflate", rows, seen)
+            Widget(button, "SetPoint", "TOPLEFT", 0, y)
+            y = y - 22
+        end
+        if group.actions.deflate then
+            local button = ActionButton(block.content, group.actions.deflate, "Deflate", rows, seen)
+            Widget(button, "SetPoint", "TOPLEFT", 0, y)
+            y = y - 22
+        end
+        block.height = -y + 4
+        blocks[#blocks + 1] = block
+    end
+    Layout()
+    return scroll, child
+end
+
+local function DisciplineGroups()
+    local actions = CCT.Discipline and CCT.Discipline.Actions or {}
+    local groups = {}
+    for i = 1, #actions do
+        local action = actions[i]
+        local parts = {}
+        for p = 1, #action.parts do
+            local part = action.parts[p]
+            parts[#parts + 1] = {
+                label = part.label,
+                spec = FindButton("disc-" .. action.id .. "-" .. part.id),
+                maxStrength = action.maxStrength or 1,
+            }
+        end
+        groups[#groups + 1] = { label = action.label, parts = parts }
+    end
+    return groups
+end
+
+local function BuildDiscipline(parent, rows, seen)
+    local scroll, child = AddScroll(parent)
+    local blocks = {}
+    local function Layout()
+        LayoutBlocks(blocks, child, scroll, -4)
+    end
+    local groups = DisciplineGroups()
+    for i = 1, #groups do
+        local group = groups[i]
+        local block = Collapsible(child, group.label, Layout)
+        local y = -2
+        for p = 1, #group.parts do
+            local part = group.parts[p]
+            if part.spec ~= nil then
+                local label = block.content:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+                Widget(label, "SetPoint", "TOPLEFT", 0, y)
+                Widget(label, "SetText", part.label)
+                for level = 1, part.maxStrength do
+                    local rowId = part.spec.id
+                    local overrides = nil
+                    if level > 1 then
+                        rowId = part.spec.id .. "@" .. level
+                        overrides = { str = tostring(level) }
+                    end
+                    local button = ActionButton(block.content, part.spec, tostring(level), rows, seen, overrides, rowId)
+                    Widget(button, "SetSize", 22, 20)
+                    Widget(button, "SetPoint", "TOPLEFT", 110 + ((level - 1) * 26), y)
+                end
+                y = y - 22
+            end
+        end
+        block.height = -y + 4
+        blocks[#blocks + 1] = block
+    end
+    Layout()
+    return scroll, child
+end
+
+local function AddCheck(parent, y, label, checked, onClick)
+    local check = CreateFrame("CheckButton", nil, parent, "UICheckButtonTemplate")
+    Widget(check, "SetSize", 24, 24)
+    Widget(check, "SetPoint", "TOPLEFT", 4, y)
+    Widget(check, "SetChecked", checked == true)
+    local text = parent:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    Widget(text, "SetPoint", "LEFT", check, "RIGHT", 4, 0)
+    Widget(text, "SetText", label)
+    if check.SetScript and onClick ~= nil then
+        check:SetScript("OnClick", function(self)
+            local value = false
+            if self.GetChecked then
+                value = self:GetChecked() and true or false
+            end
+            onClick(value)
+        end)
+    end
+    return y - 26
+end
+
+local function BuildSettings(parent, rows, seen)
+    local scroll, child = AddScroll(parent)
+    local y = -4
+    y = AddCheck(child, y, "Enable debug output", CCT.DebugEnabled and CCT.DebugEnabled() or false, function(value)
+        if CCT.SetDebug then
+            CCT.SetDebug(value)
+        end
+    end)
+    local modules = CCT.MODULES or {}
+    for i = 1, #modules do
+        local name = modules[i].name
+        local enabled = CCT.Module and CCT.Module.Enabled and CCT.Module.Enabled(name) or false
+        y = AddCheck(child, y, name, enabled, function(value)
+            if CCT.Module and CCT.Module.Set then
+                CCT.Module.Set(name, value)
+            end
+        end)
+    end
+    local advertise = FindButton("advertise")
+    if advertise ~= nil then
+        local button = ActionButton(child, advertise, advertise.label, rows, seen)
+        Widget(button, "SetPoint", "TOPLEFT", 8, y)
+        y = y - 28
+    end
+    local maid = child:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    Widget(maid, "SetPoint", "TOPLEFT", 8, y)
+    Widget(maid, "SetText", select(2, CCT.Control.MaidShell()))
+    y = y - 40
+    if CCT.NyaOptions and type(CCT.NyaOptions.Attach) == "function" then
+        local block = CCT.NyaOptions.Attach(child)
+        if block and block.ClearAllPoints then
+            block:ClearAllPoints()
+        end
+        Widget(block, "SetPoint", "TOPLEFT", 4, y)
+    end
+    Widget(child, "SetHeight", 720)
+    Widget(scroll, "UpdateScrollChildRect")
+    return scroll, child, maid
+end
+
+local function BuildStats(parent)
+    local scroll, child = AddScroll(parent)
+    local text = child:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
+    Widget(text, "SetPoint", "TOPLEFT", 8, -8)
+    Widget(text, "SetWidth", 320)
+    Widget(text, "SetJustifyH", "LEFT")
+    Widget(text, "SetText", "")
+    Widget(child, "SetHeight", 420)
+    Widget(scroll, "UpdateScrollChildRect")
+    return scroll, child, text
+end
+
+local function ShowOnly(tabs, buttons, name)
+    for i = 1, #TAB_NAMES do
+        local tabName = TAB_NAMES[i]
+        local tab = tabs[tabName]
+        if tabName == name then
+            Widget(tab, "Show")
+        else
+            Widget(tab, "Hide")
+        end
+        SetWidgetEnabled(buttons[tabName], tabName ~= name)
+    end
+end
+
+local function BuildPanels(window)
+    local rows = {}
+    local seen = {}
+    local tabs = {}
+    local buttons = {}
+    local width = 460
+    if window.GetWidth and type(window:GetWidth()) == "number" and window:GetWidth() > 40 then
+        width = window:GetWidth()
+    end
+    local tabWidth = math.floor((width - 20 - (4 * (#TAB_NAMES - 1))) / #TAB_NAMES)
+    if tabWidth < 64 then
+        tabWidth = 64
+    end
+    for i = 1, #TAB_NAMES do
+        local name = TAB_NAMES[i]
+        local button = MakeButton(window, name, tabWidth, 20, function()
+            if window.ShowTab then
+                window.ShowTab(name)
+            end
+        end)
+        Widget(button, "SetPoint", "TOPLEFT", 10 + ((i - 1) * (tabWidth + 4)), -52)
+        buttons[name] = button
+    end
+    local content = CreateFrame("Frame", nil, window)
+    Widget(content, "SetPoint", "TOPLEFT", 8, -76)
+    Widget(content, "SetPoint", "BOTTOMRIGHT", -8, 8)
+    for i = 1, #TAB_NAMES do
+        local name = TAB_NAMES[i]
+        local tab = CreateFrame("Frame", nil, content)
+        Widget(tab, "SetAllPoints", content)
+        Widget(tab, "Hide")
+        tabs[name] = tab
+    end
+    local _, _, statsText = BuildStats(tabs.Stats)
+    local _, _, hours = BuildControl(tabs.Control, rows, seen)
+    BuildToys(tabs.Toys, rows, seen)
+    BuildDiscipline(tabs.Discipline, rows, seen)
+    local _, settingsChild, maid = BuildSettings(tabs.Settings, rows, seen)
+    for i = 1, #BUTTONS do
+        local spec = BUTTONS[i]
+        if not seen[spec.id] then
+            local button = ActionButton(tabs.Control, spec, spec.label, rows, seen)
+            Widget(button, "Hide")
+        end
+    end
+    window.rows = rows
+    window.tabs = tabs
+    window.tabButtons = buttons
+    window.hours = hours
+    window.statsText = statsText
+    window.maid = maid
+    window.nya = settingsChild and settingsChild.nya or nil
+    function window.ShowTab(name)
+        if tabs[name] == nil then
+            return
+        end
+        window.selectedTab = name
+        ShowOnly(tabs, buttons, name)
+    end
+    window.ShowTab("Stats")
 end
 
 local function OnMouseWheel(self, delta)
@@ -570,6 +1023,8 @@ local function OnMouseWheel(self, delta)
     end
     self:SetVerticalScroll(nextScroll)
 end
+
+CCT.Control.ScrollWheel = OnMouseWheel
 
 local function LauncherChar(create)
     local short = CCT.Player and CCT.Player.short
@@ -606,7 +1061,7 @@ local function SaveLauncher(frame)
         point = point,
         relativePoint = type(relativePoint) == "string" and relativePoint or point,
         x = tonumber(x) or 0,
-        y = tonumber(y) or -210,
+        y = tonumber(y) or -250,
     }
 end
 
@@ -617,13 +1072,43 @@ local function ApplyLauncherPoint(frame)
     local char = LauncherChar(false)
     local saved = char and char.cgccButton
     if type(saved) ~= "table" or type(saved.point) ~= "string" then
-        frame:SetPoint("TOP", UIParent, "TOP", 0, -210)
+        frame:SetPoint("TOP", UIParent, "TOP", 0, -250)
         return
     end
     if type(frame.ClearAllPoints) == "function" then
         frame:ClearAllPoints()
     end
-    frame:SetPoint(saved.point, UIParent, saved.relativePoint or saved.point, saved.x or 0, saved.y or -210)
+    frame:SetPoint(saved.point, UIParent, saved.relativePoint or saved.point, saved.x or 0, saved.y or -250)
+end
+
+local function PresentLauncher(frame)
+    if frame == nil then
+        return
+    end
+    if UIParent ~= nil and type(frame.SetParent) == "function" then
+        frame:SetParent(UIParent)
+    end
+    if frame.SetFrameStrata then
+        frame:SetFrameStrata("HIGH")
+    end
+    if frame.SetFrameLevel then
+        frame:SetFrameLevel(300)
+    end
+    if frame.SetAlpha then
+        frame:SetAlpha(1)
+    end
+    if frame.SetSize then
+        frame:SetSize(100, 28)
+    end
+    if frame.SetText then
+        frame:SetText("cgcc")
+    end
+    if frame.SetToplevel then
+        frame:SetToplevel(true)
+    end
+    if frame.Show then
+        frame:Show()
+    end
 end
 
 function CCT.Control.Launcher()
@@ -638,13 +1123,7 @@ function CCT.Control.EnsureLauncher()
     if launcher == nil then
         return nil
     end
-    if launcher.SetSize then
-        launcher:SetSize(80, 24)
-    end
     ApplyLauncherPoint(launcher)
-    if launcher.SetText then
-        launcher:SetText("cgcc")
-    end
     if launcher.SetMovable then
         launcher:SetMovable(true)
     end
@@ -676,9 +1155,7 @@ function CCT.Control.EnsureLauncher()
             CCT.Control.Toggle()
         end)
     end
-    if launcher.Show then
-        launcher:Show()
-    end
+    PresentLauncher(launcher)
     return launcher
 end
 
@@ -706,6 +1183,62 @@ local function Supports()
     return true
 end
 
+local function Named(value, labels)
+    if type(value) ~= "string" or value == "" or value == "none" or value == false then
+        return "Off"
+    end
+    if type(labels) == "table" and labels[value] ~= nil then
+        return labels[value]
+    end
+    return tostring(value)
+end
+
+local function StatsBody(summary)
+    if not HasKitten() then
+        return "You dont own a kitten yet most Functions not avilable!!!"
+    end
+    if type(summary) ~= "table" or summary.text == "no snapshot" or type(summary.state) ~= "table" then
+        return "no snapshot"
+    end
+    local state = summary.state
+    local lines = {
+        "Gag: " .. Named(state.gag, { small = "Small gag", huge = "Heavy gag", full = "Kitty mask with gag", nyamask = "Cute kitten mask", inflatable = "Inflatable gag" }),
+        "Blindfold: " .. Named(state.blind, { light = "Light blindfold", mask = "Cute kitty blindfold", full = "Full blindfold" }),
+        "Earmuffs: " .. Named(state.ears, { kitten = "Kitten earmuffs", heavy = "Heavy earmuffs" }),
+        "Paw mittens: " .. Named(state.mittens, { locked = "Lockable paw mittens", squeaking = "Squeking paw mittens" }),
+        "Heels: " .. Named(state.heels, { maid = "Maid heels 3-CM", high = "High heels 8-CM", ballet = "Ballet boot 12-CM" }),
+        "Bell: " .. (state.bell == true and "On" or "Off"),
+        "Tail bell: " .. (state.tail == true and "On" or "Off"),
+        "Tracking jewel: " .. (state.jewel == true and "On" or "Off"),
+        "Chastity belt: " .. (state.belt == true and ("On, " .. tostring(state.beltMode or "deny")) or "Off"),
+        "Chastity bra: " .. (state.bra == true and "On" or "Off"),
+        "Leash: " .. (state.leash == true and "On" or "Off"),
+        string.format("Heat: %s / 100", tostring(summary.heat or 0)),
+        string.format("Submissiveness: %s / 100", tostring(summary.sub or 0)),
+        "Distance: " .. tostring(summary.distance or "unknown"),
+    }
+    if state.gag == "inflatable" then
+        lines[1] = string.format("Gag: Inflatable gag (stage %s)", tostring(state.gagStage or 0))
+    end
+    local toys = summary.toys or {}
+    local toyLines = {}
+    local catalog = CCT.Toys and CCT.Toys.List or {}
+    for i = 1, #catalog do
+        local toy = catalog[i]
+        local row = toys[toy.id]
+        if type(row) == "table" then
+            toyLines[#toyLines + 1] = string.format("%s: %s", toy.label, row.applied and "applied" or "off")
+        end
+    end
+    if #toyLines > 0 then
+        lines[#lines + 1] = "Toys:"
+        for i = 1, #toyLines do
+            lines[#lines + 1] = toyLines[i]
+        end
+    end
+    return table.concat(lines, "\n")
+end
+
 function CCT.Control.Refresh()
     if window == nil then
         return nil
@@ -713,6 +1246,9 @@ function CCT.Control.Refresh()
     local summary = CCT.Control.Summary()
     if window.status and window.status.SetText then
         window.status:SetText(StatusLine(summary))
+    end
+    if window.statsText and window.statsText.SetText then
+        window.statsText:SetText(StatsBody(summary))
     end
     if window.maid and window.maid.SetText then
         window.maid:SetText(select(2, CCT.Control.MaidShell()))
@@ -727,7 +1263,7 @@ function CCT.Control.Open()
     end
     if window == nil then
         window = CreateFrame("Frame", "CatgirlControlCenter", UIParent, "BackdropTemplate")
-        window:SetSize(420, 520)
+        window:SetSize(460, 520)
         window:SetPoint("CENTER")
         window:SetClampedToScreen(true)
         window:SetMovable(true)
@@ -787,67 +1323,9 @@ function CCT.Control.Open()
         end
         window.status = window:CreateFontString(nil, "OVERLAY", "GameFontNormal")
         if window.status.SetPoint then
-            window.status:SetPoint("TOPLEFT", 12, -32)
+            window.status:SetPoint("TOPLEFT", 12, -30)
         end
-        local hoursLabel = window:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        if hoursLabel and hoursLabel.SetPoint then
-            hoursLabel:SetPoint("TOPLEFT", 12, -52)
-        end
-        if hoursLabel and hoursLabel.SetText then
-            hoursLabel:SetText("Hours")
-        end
-        window.hours = CreateFrame("EditBox", nil, window)
-        window.hours:SetText("1.5")
-        if window.hours.SetSize then
-            window.hours:SetSize(48, 18)
-        end
-        if window.hours.SetPoint then
-            window.hours:SetPoint("TOPLEFT", 58, -50)
-        end
-        if window.hours.SetAutoFocus then
-            window.hours:SetAutoFocus(false)
-        end
-        if window.hours.SetFont then
-            window.hours:SetFont("Fonts\\FRIZQT__.TTF", 12, "")
-        end
-        if window.hours.SetScript then
-            window.hours:SetScript("OnEnterPressed", function(self)
-                if self.ClearFocus then
-                    self:ClearFocus()
-                end
-            end)
-            window.hours:SetScript("OnEscapePressed", function(self)
-                if self.ClearFocus then
-                    self:ClearFocus()
-                end
-            end)
-        end
-        window.maid = window:CreateFontString(nil, "OVERLAY", "GameFontHighlight")
-        if window.maid.SetPoint then
-            window.maid:SetPoint("TOPLEFT", 120, -52)
-        end
-        local scroll = CreateFrame("ScrollFrame", nil, window)
-        if scroll.SetPoint then
-            scroll:SetPoint("TOPLEFT", 8, -74)
-            scroll:SetPoint("BOTTOMRIGHT", -12, 270)
-        end
-        local child = CreateFrame("Frame", nil, scroll)
-        if child.SetSize then
-            child:SetSize(380, 8 + (#BUTTONS * 22))
-        end
-        if scroll.SetScrollChild then
-            scroll:SetScrollChild(child)
-        end
-        if scroll.EnableMouseWheel then
-            scroll:EnableMouseWheel(true)
-        end
-        if scroll.SetScript then
-            scroll:SetScript("OnMouseWheel", OnMouseWheel)
-        end
-        window.rows = BuildRows(child)
-        if CCT.NyaOptions and type(CCT.NyaOptions.Attach) == "function" then
-            CCT.NyaOptions.Attach(window)
-        end
+        BuildPanels(window)
         window:Hide()
     end
     CCT.Control.Refresh()
@@ -895,6 +1373,7 @@ if type(CreateFrame) == "function" then
         if event == "PLAYER_LOGIN" or event == "PLAYER_ENTERING_WORLD" then
             local frame = CCT.Control.EnsureLauncher()
             ApplyLauncherPoint(frame)
+            PresentLauncher(frame)
             return
         end
         if window ~= nil and window.IsShown and window:IsShown() then

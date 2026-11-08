@@ -37,6 +37,8 @@ Guild lines for a headpet, a nap, slacking, or a heel fall can still be posted. 
 
 ## Owner controls
 
+A draggable **cgcc** button at the top of the screen opens the same window as `/cgcc`. The window has five tabs: Stats, Control, Toys, Discipline, and Settings. Control, Toys, and Discipline keep each group collapsed until you open it. The window opens with no assigned kitten. Kitten actions stay disabled until one is assigned. Stats then says that most functions are not available.
+
 `/cgcc` is the live window for the assigned kitten. It shows what is worn, the timers, the map distance, heat, and submissiveness. If that kitten has never sent a snapshot, the panels say "no snapshot".
 
 The buttons cover the leash, the gags, the blindfold, the earmuffs, both bells, the mittens, chastity with deny and allow, the three heel types, the tracking jewel, force group, toys, and discipline. The hour box starts at 1.5 and is what a timed unlock uses. The maid list is edited from this window. The Nya checkboxes sit on the same window.
