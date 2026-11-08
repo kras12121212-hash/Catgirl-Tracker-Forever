@@ -1,0 +1,12 @@
+# The classic anniversary addon stays on this computer.
+# The Forever rewrite lives in this repository on its own.
+/CatgirlTracker/
+
+# WoW saved data, if it is ever copied into the tree
+SavedVariables/
+WTF/
+
+# Editor and OS leftovers
+.DS_Store
+*~
+*.swp
