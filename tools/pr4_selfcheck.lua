@@ -542,7 +542,7 @@ print = function(text)
 end
 
 UnitFullName = function()
-    return "Kitten", "Silvermoon"
+    return "Kitten"
 end
 UnitGUID = function()
     return "Player-1-ABC"
@@ -704,12 +704,26 @@ check("guild master hold is dropped", CCT.Commands.Pending() == 0 and state().ga
 
 publishRoster({})
 CCT.Roster.Rebuild()
-local heldEars = CCT.Commands.Receive("Nyx-Silvermoon", "Cmd,op:ears,state:kitten", now, false)
-check("realm owner is held", heldEars.reason == "hold" and state().ears == "none")
+local heldOther = CCT.Commands.Receive("Nyx-Silvermoon", "Cmd,op:gag,state:huge", now, false)
+check("a hyphen surname is held", heldOther.reason == "hold" and state().gag == "none")
+local heldEars = CCT.Commands.Receive("nyx", "Cmd,op:ears,state:kitten", now, false)
+check("case folded owner is held", heldEars.reason == "hold" and state().ears == "none")
 publishRoster(ownerRows())
 fire("GUILD_ROSTER_UPDATE")
-check("realm owner applies when the note arrives", state().ears == "kitten" and CCT.Commands.Pending() == 0)
+check("a surname is not the owner", state().gag == "none" and state().ears == "kitten" and CCT.Commands.Pending() == 0)
 check("earmuffs announce", hasLine("Kitten earmuffs applied. Words sound cuter now nya~") and hasNotice("Earmuffs applied: kitten."))
+publishRoster({
+    { "Kitten", "rank", 0, 1, "Mage", "Elwynn", "owner=Nyx Brightvale", "", true },
+    { "Nyx Brightvale", "Officer", 1, 1, "Mage", "Elwynn", "", "", true },
+})
+CCT.Roster.Rebuild()
+local named = CCT.Commands.Receive("nyx-brightvale", "Cmd,op:leash,on:2", now, false)
+local spaced = CCT.Commands.Receive("Nyx Brightvale", "Cmd,op:leash,on:2", now, false)
+local givenOnly = CCT.Commands.Receive("Nyx", "Cmd,op:leash,on:2", now, false)
+check("hyphen surname matches the note", named.reason == "on" and spaced.reason == "on" and state().leash ~= true)
+check("first name is not the two part owner", givenOnly.reason == "owner")
+publishRoster(ownerRows())
+CCT.Roster.Rebuild()
 
 local tasksBefore = state().counters.tasks
 for _, op in ipairs({ "maid", "maiditem", "maidtext" }) do
@@ -953,8 +967,8 @@ check("bell which is refused", badBell.reason == "which" and state().bell == fal
 
 clearList(lines)
 clearList(notices)
-local jewel = CCT.Commands.Receive("nyx-silvermoon", "Cmd,op:jewel,on:1,cid:Jewel9", now, false)
-check("lower case realm owner", jewel.ok == true and jewel.cid == "Jewel9" and state().jewel == true)
+local jewel = CCT.Commands.Receive("nyx", "Cmd,op:jewel,on:1,cid:Jewel9", now, false)
+check("lower case owner", jewel.ok == true and jewel.cid == "Jewel9" and state().jewel == true)
 check("jewel on", hasLine("|cffffff00CatgirlTracker:|r Your tracking jewel glows. Location tracking enabled.") and hasNotice("Tracking jewel attached."))
 cmd("Cmd,op:jewel,on:0")
 check("jewel off", state().jewel == false and hasLine("|cffffff00CatgirlTracker:|r The tracking jewel has been removed. Location tracking disabled.") and hasNotice("Tracking jewel removed."))

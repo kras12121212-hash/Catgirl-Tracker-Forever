@@ -248,7 +248,7 @@ end
 GuildRoster = nil
 C_GuildInfo = { GuildRoster = function() end }
 UnitFullName = function()
-    return "Kitten", "Silvermoon"
+    return "Kitten"
 end
 UnitGUID = function()
     return "Player-1-ABC"

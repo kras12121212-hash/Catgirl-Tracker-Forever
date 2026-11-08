@@ -192,6 +192,9 @@ local function TryFinish(item)
 end
 
 function CCT.Corroboration.CountTasks(name)
+    if type(name) == "string" and CCT.ShortName then
+        name = CCT.ShortName(name) or name
+    end
     if type(name) ~= "string" or name == "" then
         return false
     end
@@ -208,6 +211,9 @@ function CCT.Corroboration.CountTasks(name)
 end
 
 function CCT.Corroboration.Begin(kitten, cid, meta)
+    if type(kitten) == "string" and CCT.ShortName then
+        kitten = CCT.ShortName(kitten) or kitten
+    end
     if kitten == nil or cid == nil then
         return false
     end

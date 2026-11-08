@@ -1,6 +1,6 @@
 -- PR 1 self-check. Run from the repo root:
 --   lua tools/pr1_selfcheck.lua
--- Covers a nil player name, the public-note fallback, owner=Name-Realm,
+-- Covers a nil player name, the public-note fallback, and a Forever surname.
 -- and a speed value that errors if it is compared. The bad guard
 -- `speed ~= nil and not issecretvalue(speed)` fails the source check:
 -- outside the game client, `~= nil` does not raise, so the check reads
@@ -157,6 +157,10 @@ check("flavor default", repaired.settings.flavorAnnouncements == true)
 local emptied = { settings = { masterName = "" } }
 CCT.Saved.Repair(emptied)
 check("blank master is empty", emptied.settings.masterName == nil)
+local hyphenMaster = { settings = { masterName = "Anna-Brightvale" }, chars = { ["Mina-Dawn"] = { marker = true } } }
+CCT.Saved.Repair(hyphenMaster)
+check("master hyphen is the full name", hyphenMaster.settings.masterName == "Anna Brightvale")
+check("hyphen character key is the full name", hyphenMaster.chars["Mina-Dawn"] == nil and hyphenMaster.chars["Mina Dawn"].marker == true)
 
 CatgirlTrackerDB = nil
 CCT.Saved.OnEvent(nil, "ADDON_LOADED", "CatgirlTracker_Forever")
@@ -231,14 +235,14 @@ CCT.db.chars.Kitten = {
     nya = { enabled = false },
 }
 UnitFullName = function()
-    return "Kitten", "Silvermoon"
+    return "Kitten"
 end
 UnitGUID = function()
     return "Player-1-ABC"
 end
 check("login refresh", CCT.Player.Refresh() == true)
 check("short name", CCT.Player.short == "Kitten")
-check("realm", CCT.Player.realm == "Silvermoon")
+check("no realm", CCT.Player.realm == nil and CCT.Player.name == "Kitten")
 check("guid stored whole", CCT.Player.guid == "Player-1-ABC")
 local state = CCT.State.Get()
 check("typo mittens read once", state.mittens == "squeaking")
@@ -296,7 +300,8 @@ check("pets clamp", CCT.State.AddCounter("pets", 99999) == true and state.counte
 check("unknown counter", CCT.State.AddCounter("trail", 1) == false)
 check("pos rounded", CCT.State.SetPos({ mapID = 12, x = 0.123456, y = 0.5, instanceID = 4, t = 9 }) == true)
 check("pos fields", state.pos.x == 0.1235 and state.pos.y == 0.5 and state.pos.mapID == 12 and state.pos.t == 9)
-check("leash short", CCT.State.SetLeash(true, "Nyx-Silvermoon") == true and state.leashOwner == "Nyx")
+check("leash keeps the surname", CCT.State.SetLeash(true, "Nyx-Silvermoon") == true and state.leashOwner == "Nyx Silvermoon")
+check("same leash name", CCT.SameName(state.leashOwner, "nyx silvermoon") == true and CCT.SameName("Nyx", state.leashOwner) == false)
 check("message format", CCT.Msg("HEELS_PROGRESS", "Kit", "maid", 2):find('level "2"', 1, true) ~= nil)
 check("missing message", CCT.Msg("NO_SUCH") == "NO_SUCH")
 
@@ -319,7 +324,7 @@ IsInGuild = function()
     return true
 end
 local roster = {
-    { "KittenA", "rank", 0, 1, "Mage", "Elwynn", "hello", "owner=Alice-Silvermoon", true },
+    { "KittenA", "rank", 0, 1, "Mage", "Elwynn", "hello", "owner=Alice", true },
     { "KittenB", "rank", 0, 1, "Mage", "Elwynn", "owner=alice", "", false },
     { "Nyx", "rank", 0, 1, "Mage", "Elwynn", "", "", nil },
     { "Kitten", "rank", 0, 1, "Mage", "Elwynn", "owner=Nyx", "", true },
@@ -359,12 +364,18 @@ now = 20
 CCT.Roster.Rebuild()
 check("rate limit later prints the suppressed count", printed("(+1 similar)"))
 
-check("owner from name-realm", CCT.Roster.OwnerFromNotes("ignored", "owner=Alice-Silvermoon") == "Alice")
+check("owner keeps both names", CCT.Roster.OwnerFromNotes("ignored", "owner=Alice Brightvale") == "Alice Brightvale")
+check("owner hyphen is the surname", CCT.Roster.OwnerFromNotes("", "owner=Alice-Brightvale") == "Alice Brightvale")
+check("space and hyphen are one owner", CCT.SameName("Alice Brightvale", "Alice-Brightvale") == true)
+check("first name is not the full name", CCT.SameName("Alice", "Alice Brightvale") == false)
 check("public note fallback", CCT.Roster.OwnerFromNotes("owner=Alice", "") == "Alice")
 check("blank officer does not hide public", CCT.Roster.OwnerFromNotes("owner=Cara", "   ") == "Cara")
 check("comma ends the token", CCT.Roster.OwnerFromNotes("owner=Bob, owner=Cara", "") == "Bob")
+check("comma ends a two part name", CCT.Roster.OwnerFromNotes("owner=Bob Vale, owner=Cara", "") == "Bob Vale")
+check("words after the name are left out", CCT.Roster.OwnerFromNotes("owner=Bob Vale please", "") == "Bob Vale")
 check("officer text without owner hides public", CCT.Roster.OwnerFromNotes("owner=Alice", "rank only") == nil)
 check("online boolean is not a note", CCT.Roster.OwnerFromNotes("owner=Alice", true) == "Alice")
+check("link form", CCT.LinkName("Alice Brightvale") == "Alice-Brightvale" and CCT.LinkName("Alice-Brightvale") == "Alice-Brightvale" and CCT.LinkName("Nyx") == "Nyx")
 
 local selfRow = nil
 CCT.Player.short = "Kitten"
@@ -381,6 +392,7 @@ check("master online", CCT.Roster.IsMasterOnline() == true)
 roster[3][9] = false
 CCT.Roster.Rebuild()
 check("master offline", CCT.Roster.IsMasterOnline() == false)
+check("typed master keeps both names", CCT.ShortName("Anna-Brightvale") == "Anna Brightvale" and CCT.ShortName("anna brightvale") == "anna brightvale")
 local callsBeforeRead = rosterCalls
 CCT.Roster.GetOwnerShort()
 CCT.Roster.GetMember("Nyx")
@@ -477,12 +489,34 @@ end
 CCT.Move.Sample()
 check("sample does not print", printCalled == false)
 
+CCT.db.chars.Clutch = { nya = { enabled = false, chance = 12 } }
 UnitName = function()
-    return "OnlyUnit-Area52"
+    return "Clutch", "Bloodfury"
 end
 UnitFullName = nil
-check("unit name fallback", CCT.Player.Refresh() == true and CCT.Player.short == "OnlyUnit" and CCT.Player.realm == "Area52")
-check("new character has a clock stamp", CCT.db.chars.OnlyUnit.state.lastUnixUpdate == 0)
+GetUnitName = nil
+check("unit surname is not a realm", CCT.Player.Refresh() == true and CCT.Player.short == "Clutch Bloodfury" and CCT.Player.name == "Clutch Bloodfury" and CCT.Player.realm == nil)
+check("old first name row follows the surname", CCT.db.chars.Clutch == nil and CCT.db.chars["Clutch Bloodfury"].nya.chance == 12)
+UnitName = function()
+    return "Lira"
+end
+GetUnitName = function(_, full)
+    if full then
+        return "Lira-Stone"
+    end
+    return "Lira"
+end
+check("linked unit name keeps the surname", CCT.Player.Refresh() == true and CCT.Player.short == "Lira Stone" and CCT.Player.realm == nil)
+check("new character has a clock stamp", CCT.db.chars["Lira Stone"].state.lastUnixUpdate == 0)
+UnitName = function()
+    return "Asha"
+end
+UnitFullName = function()
+    return "Asha", "Brightvale"
+end
+GetUnitName = nil
+check("full name second return is the surname", CCT.Player.Refresh() == true and CCT.Player.short == "Asha Brightvale" and CCT.Player.realm == nil)
+check("given name does not match that character", CCT.SameName("Asha", CCT.Player.short) == false)
 
 local bell = io.open(addon .. "/Sounds/Bell.ogg", "rb")
 local icon = io.open(addon .. "/Textures/catgirltga.tga", "rb")

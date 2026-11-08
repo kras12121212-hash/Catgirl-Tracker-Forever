@@ -73,7 +73,7 @@ local function Say(text)
 end
 
 local function MacroTarget(name)
-    local short = CCT.ShortName(name)
+    local short = CCT.LinkName and CCT.LinkName(name) or nil
     if short == nil or short:find("[%c]") then
         return nil
     end

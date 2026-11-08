@@ -500,7 +500,7 @@ print = function(text)
 end
 
 UnitFullName = function()
-    return "Kitten", "Silvermoon"
+    return "Kitten"
 end
 UnitGUID = function()
     return "Player-1-ABC"

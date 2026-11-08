@@ -587,6 +587,77 @@ local function MakeButton(parent, text, width, height, onClick)
 end
 
 local scrollSerial = 0
+local scrollPairs = {}
+
+local function Hook(frame, script, handler)
+    if type(frame) ~= "table" or type(handler) ~= "function" then
+        return
+    end
+    if type(frame.HookScript) == "function" then
+        frame:HookScript(script, handler)
+        return
+    end
+    if type(frame.SetScript) == "function" then
+        frame:SetScript(script, handler)
+    end
+end
+
+local function DropFocus(box)
+    if type(box) ~= "table" then
+        return
+    end
+    Widget(box, "SetAutoFocus", false)
+    Widget(box, "ClearFocus")
+end
+
+-- A scroll child can stay shown and clickable after its window hides, and a
+-- focused edit box keeps Escape and chat clicks. Both have to be released.
+local function HideScrollContents(pair)
+    local scroll = pair.scroll
+    local child = pair.child
+    if scroll ~= nil and scroll.cctScrollGuard then
+        return
+    end
+    if scroll ~= nil then
+        scroll.cctScrollGuard = true
+    end
+    Widget(scroll, "EnableMouse", false)
+    Widget(child, "EnableMouse", false)
+    Widget(child, "Hide")
+    if scroll ~= nil then
+        scroll.cctScrollGuard = false
+    end
+end
+
+local function ShowScrollContents(pair)
+    local scroll = pair.scroll
+    local child = pair.child
+    if scroll ~= nil and scroll.cctScrollGuard then
+        return
+    end
+    if scroll ~= nil then
+        scroll.cctScrollGuard = true
+    end
+    Widget(scroll, "EnableMouse", true)
+    if type(child) == "table" and type(child.Show) == "function" then
+        child:Show()
+    end
+    Widget(child, "EnableMouse", false)
+    if scroll ~= nil then
+        scroll.cctScrollGuard = false
+    end
+end
+
+local function ReleaseInput(frame)
+    DropFocus(frame and frame.hours)
+    if type(frame) == "table" and type(frame.nya) == "table" then
+        DropFocus(frame.nya.chance)
+    end
+    Widget(frame, "EnableMouse", false)
+    for i = 1, #scrollPairs do
+        HideScrollContents(scrollPairs[i])
+    end
+end
 
 local function AddScroll(parent)
     scrollSerial = scrollSerial + 1
@@ -594,7 +665,11 @@ local function AddScroll(parent)
     Widget(scroll, "SetAllPoints", parent)
     local child = CreateFrame("Frame", nil, scroll)
     Widget(child, "SetSize", 340, 240)
+    Widget(child, "EnableMouse", false)
     Widget(scroll, "SetScrollChild", child)
+    if type(child.SetParent) == "function" then
+        child:SetParent(scroll)
+    end
     Widget(scroll, "EnableMouseWheel", true)
     if scroll ~= nil and scroll.SetScript then
         scroll:SetScript("OnMouseWheel", function(self, delta)
@@ -602,6 +677,19 @@ local function AddScroll(parent)
                 CCT.Control.ScrollWheel(self, delta)
             end
         end)
+    end
+    local pair = { scroll = scroll, child = child }
+    scrollPairs[#scrollPairs + 1] = pair
+    Hook(scroll, "OnHide", function()
+        HideScrollContents(pair)
+    end)
+    Hook(scroll, "OnShow", function()
+        ShowScrollContents(pair)
+    end)
+    if scroll ~= nil and scroll.IsShown and not scroll:IsShown() then
+        HideScrollContents(pair)
+    else
+        ShowScrollContents(pair)
     end
     return scroll, child
 end
@@ -681,15 +769,19 @@ local function BuildControl(parent, rows, seen)
     Widget(hours, "SetSize", 48, 18)
     Widget(hours, "SetPoint", "TOPLEFT", 56, -4)
     Widget(hours, "SetAutoFocus", false)
+    Widget(hours, "ClearFocus")
     Widget(hours, "SetFont", "Fonts\\FRIZQT__.TTF", 12, "")
     if hours.SetScript then
         hours:SetScript("OnEnterPressed", function(self)
-            Widget(self, "ClearFocus")
+            DropFocus(self)
         end)
         hours:SetScript("OnEscapePressed", function(self)
-            Widget(self, "ClearFocus")
+            DropFocus(self)
         end)
     end
+    Hook(hours, "OnHide", function(self)
+        DropFocus(self)
+    end)
     local blocks = {}
     local function Layout()
         LayoutBlocks(blocks, child, scroll, -28)
@@ -1179,6 +1271,15 @@ local function Supports()
     if type(edit.SetText) ~= "function" or type(edit.GetText) ~= "function" then
         return false
     end
+    -- These probes are real frames. A leftover edit box keeps keyboard focus
+    -- after the window is gone, so Escape never reaches the game menu.
+    DropFocus(edit)
+    Widget(edit, "EnableMouse", false)
+    Widget(edit, "Hide")
+    Widget(scroll, "EnableMouse", false)
+    Widget(scroll, "Hide")
+    Widget(probe, "EnableMouse", false)
+    Widget(probe, "Hide")
     ready = true
     return true
 end
@@ -1287,6 +1388,12 @@ function CCT.Control.Open()
         if window.RegisterForDrag then
             window:RegisterForDrag("LeftButton")
         end
+        Hook(window, "OnHide", function(self)
+            ReleaseInput(self)
+        end)
+        Hook(window, "OnShow", function(self)
+            Widget(self, "EnableMouse", true)
+        end)
         if window.SetScript then
             window:SetScript("OnDragStart", function(self)
                 if self.StartMoving then
@@ -1318,6 +1425,7 @@ function CCT.Control.Open()
         end
         if close.SetScript then
             close:SetScript("OnClick", function()
+                ReleaseInput(window)
                 window:Hide()
             end)
         end
@@ -1338,6 +1446,7 @@ end
 
 function CCT.Control.Toggle()
     if window and window.IsShown and window:IsShown() then
+        ReleaseInput(window)
         window:Hide()
         return window
     end

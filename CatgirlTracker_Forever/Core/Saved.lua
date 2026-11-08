@@ -46,6 +46,8 @@ function CCT.Saved.Repair(db)
     end
     if settings.masterName == "" then
         settings.masterName = nil
+    elseif type(settings.masterName) == "string" then
+        settings.masterName = CCT.ShortName(settings.masterName)
     end
     if type(settings.modules) ~= "table" then
         settings.modules = {}
@@ -75,6 +77,35 @@ function CCT.Saved.Repair(db)
     if type(db.master.kittens) ~= "table" then
         db.master.kittens = {}
     end
+    -- "Mina-Dawn" and "Mina Dawn" are one character. Week ids stay as they are.
+    local function RekeyNames(map)
+        if type(map) ~= "table" then
+            return
+        end
+        local pending = {}
+        for key in pairs(map) do
+            if type(key) == "string" and key:match("^%d%d%d%d%-W%d%d$") == nil then
+                local full = CCT.ShortName(key)
+                if type(full) == "string" and full ~= key then
+                    pending[#pending + 1] = key
+                    pending[#pending + 1] = full
+                end
+            end
+        end
+        for i = 1, #pending, 2 do
+            local key = pending[i]
+            local full = pending[i + 1]
+            if map[full] == nil then
+                map[full] = map[key]
+                map[key] = nil
+            end
+        end
+    end
+    RekeyNames(db.chars)
+    RekeyNames(db.owner.kitten)
+    RekeyNames(db.owner.weeks)
+    RekeyNames(db.owner.closed)
+    RekeyNames(db.master.kittens)
     return db
 end
 

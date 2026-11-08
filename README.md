@@ -8,11 +8,11 @@ The build specification is [docs/CatgirlTracker-Forever-Design.md](docs/CatgirlT
 
 ## The three roles
 
-**Kitten.** The character the addon acts on. The guild note on that character contains `owner=Name`. That name is the Owner. When the officer note has text, the client reads the owner from the officer note. When the officer note is empty, `owner=` on the public note still counts.
+**Kitten.** The character the addon acts on. The guild note on that character contains `owner=First Last`. That name is the Owner. `owner=First-Last` is the same person. A comma ends the name, and only the first two words are kept. When the officer note has text, the client reads the owner from the officer note. When the officer note is empty, `owner=` on the public note still counts. Forever has no realm in a character name. A first name alone is a different character.
 
 **Owner.** One person for that kitten. The Owner opens `/cgcc` and applies gear from that window. A click from anyone else, including the Guild Master, does nothing.
 
-**Guild Master.** One character for the whole guild. Set the short name with `/cctmaster Name`. The name starts empty. While it is empty, no character is Guild Master and kittens do not send the weekly report. The name is typed. It is not taken from a guild rank.
+**Guild Master.** One character for the whole guild. Set the name with `/cctmaster First Last`. `First-Last` is the same name. The name starts empty. While it is empty, no character is Guild Master and kittens do not send the weekly report. The name is typed. It is not taken from a guild rank.
 
 ## Commands
 
@@ -23,7 +23,7 @@ The build specification is [docs/CatgirlTracker-Forever-Design.md](docs/CatgirlT
 | `/cctdebug` | Turns debug printing on or off. It starts off. |
 | `/cctmodule` | Lists the five modules. `/cctmodule Name` turns that module on or off. |
 | `/cctmaster` | Prints the Guild Master name, or says it is not set. |
-| `/cctmaster Name` | Sets the Guild Master to that short name. |
+| `/cctmaster First Last` | Sets the Guild Master. `First-Last` is the same name. |
 
 `/cctcmd` is not a command.
 

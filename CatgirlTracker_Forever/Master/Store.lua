@@ -178,7 +178,7 @@ local function FindRecord(kittens, name)
         return nil, nil
     end
     for key, row in pairs(kittens) do
-        if type(key) == "string" and type(row) == "table" and key:lower() == want:lower() then
+        if type(key) == "string" and type(row) == "table" and CCT.SameName(key, want) then
             return key, row
         end
     end

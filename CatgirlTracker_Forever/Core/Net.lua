@@ -1058,6 +1058,9 @@ local function PickWhisper(now)
 end
 
 local function Transmit(payload, chatType, target)
+    if chatType == "WHISPER" and type(CCT.LinkName) == "function" then
+        target = CCT.LinkName(target) or target
+    end
     if C_ChatInfo == nil or type(C_ChatInfo.SendAddonMessage) ~= "function" then
         return nil
     end
@@ -1350,16 +1353,11 @@ function CCT.Net.Parse(message)
 end
 
 local function SenderShort(sender)
-    if type(Ambiguate) == "function" and type(sender) == "string" then
-        local short = Ambiguate(sender, "short")
-        if type(short) == "string" and short ~= "" then
-            return short
-        end
-    end
-    if type(sender) ~= "string" then
+    -- Ambiguate(..., "short") strips at a hyphen. On Forever that drops the surname.
+    if type(CCT.ShortName) ~= "function" then
         return nil
     end
-    return sender:match("^[^%-]+")
+    return CCT.ShortName(sender)
 end
 
 local function Dispatch(parsed, sender, channelName)

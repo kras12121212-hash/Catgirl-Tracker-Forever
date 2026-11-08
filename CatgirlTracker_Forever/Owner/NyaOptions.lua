@@ -70,13 +70,41 @@ function CCT.NyaOptions.Attach(parent)
         local row = rows[i]
         if row.key == "chance" then
             local box = CreateFrame("EditBox", nil, block)
+            if box.SetAutoFocus then
+                box:SetAutoFocus(false)
+            end
+            if box.ClearFocus then
+                box:ClearFocus()
+            end
+            if box.SetSize then
+                box:SetSize(48, 18)
+            end
             if box.SetText then
                 box:SetText(tostring(row.value or 50))
             end
             box:SetScript("OnEnterPressed", function(self)
                 local text = self.GetText and self:GetText() or nil
                 CCT.NyaOptions.SetChance(text)
+                if self.ClearFocus then
+                    self:ClearFocus()
+                end
             end)
+            box:SetScript("OnEscapePressed", function(self)
+                if self.SetAutoFocus then
+                    self:SetAutoFocus(false)
+                end
+                if self.ClearFocus then
+                    self:ClearFocus()
+                end
+            end)
+            if box.HookScript then
+                box:HookScript("OnHide", function(self)
+                    if self.ClearFocus then
+                        self:ClearFocus()
+                    end
+                end)
+            end
+            block.chance = box
         else
             local check = CreateFrame("CheckButton", nil, block)
             if check.SetChecked then

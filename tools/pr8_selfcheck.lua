@@ -184,7 +184,7 @@ UnitName = function()
     return "Nyx"
 end
 UnitFullName = function()
-    return "Nyx", "Realm"
+    return "Nyx"
 end
 UnitGUID = function()
     return "Player-1"
@@ -314,7 +314,7 @@ local function bind(name)
         return name
     end
     UnitFullName = function()
-        return name, "Realm"
+        return name
     end
     CCT.Player.Refresh()
     CCT.Saved.Init()

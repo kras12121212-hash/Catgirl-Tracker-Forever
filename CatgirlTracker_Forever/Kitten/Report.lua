@@ -576,6 +576,13 @@ local function RememberParty()
     partyKnown = true
 end
 
+local function InviteName(owner)
+    if type(CCT.LinkName) == "function" then
+        return CCT.LinkName(owner) or owner
+    end
+    return owner
+end
+
 function CCT.Report.FinishGroup()
     if pendingOwner == nil or InGroup() then
         return false
@@ -587,7 +594,7 @@ function CCT.Report.FinishGroup()
     end
     local owner = pendingOwner
     pendingOwner = nil
-    invite(owner)
+    invite(InviteName(owner))
     return true
 end
 
@@ -611,7 +618,7 @@ function CCT.Report.ApplyGroup(sender, fields)
             CCT.Report.FinishGroup()
         end
     else
-        invite(owner)
+        invite(InviteName(owner))
     end
     return { ok = true, reason = nil, op = "group", cid = cid }
 end

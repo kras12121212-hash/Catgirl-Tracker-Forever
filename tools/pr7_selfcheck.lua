@@ -138,7 +138,7 @@ UnitName = function()
     return "Mina"
 end
 UnitFullName = function()
-    return "Mina", "Realm"
+    return "Mina"
 end
 UnitGUID = function()
     return "Player-1"
@@ -220,8 +220,11 @@ local function noon(year, month, day)
 end
 
 local function bind(name)
+    UnitName = function()
+        return name
+    end
     UnitFullName = function()
-        return name, "Realm"
+        return name
     end
     CCT.Player.Refresh()
     CCT.Saved.Init()
@@ -874,8 +877,8 @@ CCT.db.settings.masterName = nil
 clear(lines)
 SlashCmdList.CCTMASTER("")
 check("empty master command prints the empty name", said("Guild Master is not set."))
-SlashCmdList.CCTMASTER("Nyx-Realm")
-check("cctmaster stores the short name", CCT.db.settings.masterName == "Nyx" and said("Guild Master is Nyx"))
+SlashCmdList.CCTMASTER("Nyx-Brightvale")
+check("cctmaster stores both names", CCT.db.settings.masterName == "Nyx Brightvale" and said("Guild Master is Nyx Brightvale"))
 CCT.db.settings.masterName = "Master"
 bind("Master")
 

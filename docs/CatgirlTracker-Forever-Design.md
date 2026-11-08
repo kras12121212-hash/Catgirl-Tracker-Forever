@@ -24,6 +24,8 @@ The rewrite keeps the gameplay and throws away the retention. One runtime owns t
 
 Classic clients and Forever clients do not share a realm. The wire format is a clean break. Old `BehaviorLog, ...` strings are not accepted and not emitted.
 
+Forever character names are `First Surname`. `First-Surname` is the same character. The second return of `UnitName` and `UnitFullName` is the surname, not a realm. Do not strip at `-`, do not use `Ambiguate(..., "short")` to identify a player, and do not append `GetRealmName`. `owner=` keeps the first two words, so `owner=Anna Brightvale` and `owner=Anna-Brightvale` match, and `Anna` does not. Stored names use a space. Whispers, invites, and `/target` use `First-Surname`. Sentences below that say `Name-Realm` or `match("^[^%-]+")` are the original plan and do not apply.
+
 ## Background & Motivation
 
 ### What the classic addon actually does

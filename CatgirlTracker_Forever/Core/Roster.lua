@@ -28,11 +28,21 @@ function CCT.Roster.OwnerFromNotes(publicNote, officerNote)
     if source == nil then
         return nil
     end
-    local token = source:match("owner=([^,%s]+)")
-    if token == nil then
+    -- A comma or a new line ends the name. The first two words are the
+    -- character. owner=Anna Brightvale and owner=Anna-Brightvale match.
+    local raw = source:match("owner=([^,\r\n]*)")
+    if raw == nil then
         return nil
     end
-    return CCT.ShortName(token)
+    raw = raw:match("^%s*(.-)%s*$")
+    if raw == nil or raw == "" then
+        return nil
+    end
+    local first, second = raw:match("^(%S+)%s+(%S+)")
+    if first ~= nil and second ~= nil then
+        return CCT.ShortName(first .. " " .. second)
+    end
+    return CCT.ShortName(raw:match("^(%S+)"))
 end
 
 local function ReportOwner(previous)

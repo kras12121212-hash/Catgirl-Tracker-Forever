@@ -35,6 +35,9 @@ local function Restore(ok, ...)
 end
 
 function CCT.Chat.Send(msg, chatType, language, target, opts)
+    if type(chatType) == "string" and chatType:upper() == "WHISPER" and type(CCT.LinkName) == "function" then
+        target = CCT.LinkName(target) or target
+    end
     if busy then
         return CallOriginal(msg, chatType, language, target)
     end
