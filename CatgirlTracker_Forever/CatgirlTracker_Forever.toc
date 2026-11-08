@@ -1,0 +1,14 @@
+## Interface: 16001
+## Title: CatgirlTracker Forever
+## Notes: Owner controls and a weekly kitten scorecard. No guild transcript.
+## Version: 2.0.0
+## SavedVariables: CatgirlTrackerDB
+
+Core/Namespace.lua
+Core/Saved.lua
+Core/Debug.lua
+Core/Messages.lua
+Core/Player.lua
+Core/Roster.lua
+Core/Move.lua
+Kitten/State.lua
