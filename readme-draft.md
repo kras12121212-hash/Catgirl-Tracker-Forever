@@ -4,38 +4,46 @@ A guide for kittens and owners. This draft explains heat and submissiveness. The
 
 ## Heat, submissiveness, orgasms, and spanks
 
-Heat and submissiveness are two different bars that push on each other.
+Heat and submissiveness are two different feelings, and they tug on each other.
 
-Heat is arousal. It fills while she is dressed, toyed, leashed, or disciplined, and it fades on its own, including while she is logged out. When the bar fills all the way, she reaches an orgasm. If the chastity belt is set to allow, the orgasm happens and heat empties. If the belt is set to deny, the orgasm is refused, heat falls back from the top, and that denial is remembered for the rest of the day.
+Heat is how worked up she is. It rises while she is dressed, while a worn toy is left in her, while she is on her leash, and while her owner handles her. Left alone, it fades, even if she logs out. When the bar fills, she is right on the edge. If her chastity belt is set to allow, she comes, and the heat empties. If the belt is set to deny, the orgasm is refused. Heat falls back from the top, and that denial stays with her for the rest of the day.
 
-Submissiveness is how deeply she is in the role right now. It comes from three things: how trained her heels are, how much she is wearing, and how the day has gone between denials and orgasms. It is there so a dressed, trained, denied kitten is harder to cool down. A high bar does not add heat by itself. It changes what a toy shock does to her.
+Submissiveness is how deeply she is in it right now. It comes from her heel training, from how much she is wearing, and from how the day has gone between denials and orgasms. A high bar does not add heat by itself, but it changes how she responds to being toyed with.
 
 ### Raising submissiveness
 
-Keep her in gear. Restraints, toys, bells, the jewel, chastity, and the leash all add to the bar. More worn means a higher bar. Taking something off lowers that part at once. With nothing on, a little of the bar remains. It does not drop to nothing.
+Keep her dressed. Gear, worn toys, and the leash all lift the bar. The more she is in, the higher it sits. Take something off and that part falls at once.
 
-Practice heels. All three styles count, including the ones she is not wearing at the moment. Heel skill stays. An orgasm does not undo it, and midnight does not undo it.
+Let her practice her heels. All three styles count, even the ones she is not wearing. That skill stays with her. An orgasm does not take it away, and midnight does not take it away.
 
-Deny her when heat fills. Each denial today makes the bar more sensitive for the rest of that day. The owner's stats still keep a lifetime denial count, so the history is not lost. That lifetime count does not keep pushing the bar. Only today's denials do.
+Deny her when heat fills. Each denial today makes her more sensitive for the rest of that day. She feels the next toy more deeply.
 
 ### Lowering submissiveness
 
-Allow the orgasm. An orgasm today offsets the denials from today, and the daily pressure eases. Orgasms cannot erase heel training, and they cannot erase the effect of what she is still wearing. They only take the edge off today's denials.
+Allow the orgasm. An orgasm today offsets the denials from today.
 
-Wait for midnight on the kitten's own computer. At midnight, today's denials and today's orgasms both clear. The daily pressure starts over. What she is still wearing, and the heels she has learned, stay as they were.
+Wait for midnight for the kitten's orgasms and denials to clear.
 
-Take gear off. That lowers the worn part immediately, without waiting for midnight.
+Take gear off. That eases her at once. She does not have to wait for midnight.
 
-### What spanks and shocks do
+### Her owner's hands, and a toy
 
-A spank, and every other discipline hit, adds heat. That includes the crop, the paddle, the whip, the vibrating wand, and the shock wand. Discipline does not lower heat, and it does not change submissiveness on its own. Its purpose is to carry her toward the top of the heat bar, where she will either come or be denied.
+Her owner's hands add heat. A spank does. The rest of that discipline does too. It never cools her, and it does not change her submissiveness on its own. This is how you walk her up to the top of the heat bar, where she will either come for you or be denied.
 
-A toy shock is the hit that can cool her. It looks at the submissiveness she has right now, not the highest she has ever been. While she is only a little submissive, a shock brings heat down. As she becomes more submissive, a light shock turns around and adds heat instead. A hard shock still cools her until she is deeply submissive. Then even a hard shock feeds heat.
+A kitten being punished by a toy, and not by the hand of her loving owner, can be a rather negative experience for a kitten. If your kitten's submissiveness is low and you punish her with an automated toy, it will decrease her heat, as the pain or panic overwhelms her. Though if she is submissive enough, those automated toys can add a lot to your kitten's heat bar all on their own, and for hours on end. Also keep in mind the intensity matters. She might have enough submissiveness to get turned on by a mild shock, but getting a big zap might make her more scared than turned on, depending on how submissive she feels.
 
 ### How an owner uses this
 
-To keep her submissive, leave her dressed, let her keep practicing heels, and deny her when heat fills. Denial makes the next toy shock more likely to arouse her. That arousal fills heat again. If she is still denied, the day stacks.
+If you want her soft and deep in it, leave her dressed, let her keep practicing her heels, and deny her when heat fills. A denial makes the next automated toy more likely to arouse her instead of scare her. The heat climbs again. Deny her again, and the day stacks on itself.
 
-To let her come down, allow the orgasm, take gear off, and let midnight clear the day's denials. Spanks will still heat her. They are not a way to lower the submissiveness bar.
+If you want her to come down, allow the orgasm, take the gear off, and wait for midnight. Her owner's hands will still warm her. They are not a way to lower the bar.
 
-The kitten sees today's orgasms, today's denials, and the time those two counts reset, under her submissiveness bar. The owner sees the same day on the stats tab, together with the lifetime denial count.
+She can see today's orgasms, today's denials, and when those counts reset, under her submissiveness bar. You can see the same day on the stats tab.
+
+### Names used above
+
+| Name | What she feels | Which things |
+| --- | --- | --- |
+| Her owner's hands | Discipline from you. It always warms her. | Spank Hand, Pinch, Crop, Paddle, Heart Crop, Whip, Vibrating Wand, Shock Wand |
+| Worn toys | Left in or on her. They warm her for as long as they stay. | Small Butplug, Large Butplug, Taill Butplug, Inflatable Butplug, Inflatable Dildo, Vibes Pussy, Vibes Nipples |
+| Automated toys | They can zap her without your hand. A mild zap and a big zap are not the same, and her submissiveness right now decides which way it goes. Left in, they also warm her on their own. | Dildo, Vibes Ears, Nipple Piercings, Ear Piercings, Pussy Lipps Piercings |
