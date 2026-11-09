@@ -292,10 +292,11 @@ Nap window, in-progress nap, slack session (`restingStart`, the counting latch, 
 ```text
 levelSum = heelLevel.maid + heelLevel.high + heelLevel.ballet
            -- each defaults to 1, each is at least 1
-denied   = lifetime count of denied orgasms
-           -- NOT the weekly scorecard deny counter
-today    = orgasms since local midnight (date("*t") with hour, min, sec = 0)
-diff     = denied - today
+deniedToday = denials since local midnight
+              -- NOT the lifetime deny count
+              -- NOT the weekly scorecard deny counter
+orgasmsToday = orgasms since local midnight (date("*t") with hour, min, sec = 0)
+diff     = deniedToday - orgasmsToday
 diff     = 1 if diff <= 0
 binds    = applied bind count
 binds    = 1 if binds < 1
@@ -304,7 +305,7 @@ sub      = math.floor(clamp(levelSum * diff * binds, 0, 100) + 0.5)
 
 Bind count is 1 for each of: gag worn, blind worn, ears worn, mittens worn, heels worn, collar bell, tail bell, jewel, belt, bra, each applied toy, leash. There are 12 toy ids. The four butplug ids are mutually exclusive, so at most one of them is applied. The reachable maximum is 20: 10 worn slots + 9 toys (12 minus the 3 butplugs the exclusion keeps off) + leash. 23 is the sum if all 12 toys could be worn together. That sum is unreachable. The formula clamps at 100, so once `sub` saturates the scorecard tie-break is the kitten's name. The bar is the existing 240×18 status bar, draggable, position stored on the character. It is shown only when this character has an owner. Recompute on state change and on a 2-second ticker, but write the value into `state.sub` only. Do not append a log row. Push to the owner when the integer changes.
 
-Lifetime deny and today's orgasms live in `db.chars[short].life`, not in the weekly counters. Weekly `orgasm` and `deny` are a second pair used only on the scorecard. Both pairs increment together when the event happens. The weekly pair resets with the week. The lifetime deny count and the local-midnight orgasm count do not.
+Lifetime deny, today's denial timestamps, and today's orgasm timestamps live in `db.chars[short].life`, not in the weekly counters. Weekly `orgasm` and `deny` are a second pair used only on the scorecard. Both pairs increment together when the event happens. The weekly pair resets with the week. The lifetime deny count does not. Denials today and orgasms today are counts of stamps since local midnight, each list capped at 50. The kitten's submissiveness bar shows both today counts and the local time they reset. The owner stats show Denied Today and that same reset time. A new local day sends one state snapshot so the owner counts clear.
 
 #### Heat, preserved
 
@@ -501,9 +502,9 @@ Item names go through `C_Item` (`C_Item.GetItemInfo`, `C_Item.GetItemCount`). Cl
 
 #### Pet and zone
 
-`CreateLocalMacro.lua` writes one general macro named `CatNya` whose body is only `/use` lines for the seven cat carriers listed in that file. Retry after combat if `CreateMacro` was blocked. The pet button is a `SecureActionButtonTemplate` that runs that macro and is draggable. It does not decide `petSummoned`.
+`CreateLocalMacro.lua` still writes one general macro named `CatNya` whose body is only `/use` lines for the seven cat carriers. Those items no longer summon on this client. The summon control is a small draggable window. Its button calls `C_PetJournal.SummonPetByGUID` for the first collected cat-carrier species, or `CallCompanion("CRITTER", slot)` when only the classic critter list is present. A second click dismisses that cat. The click does not decide `petSummoned`. The window shows the minutes and seconds left until the next check. While the player is dead the button reads "Summon your cat Nya !". On revive it reads the journal again.
 
-Forever can read the summoned cosmetic companion. `C_PetJournal.GetSummonedPetGUID` and the species id are the check. The seven cat-carrier species are Bombay Cat 40, Cornish Rex Cat 41, Black Tabby Cat 42, Orange Tabby Cat 43, Siamese Cat 44, Silver Tabby Cat 45, and White Kitten 46. A renamed pet still counts. Any other companion does not, including other cats. A hunter pet does not, and the check does not ask whether a pet is dead. If the classic critter list is present, a summoned critter named Bombay, Cornish Rex, Black Tabby, Orange Tabby, Siamese, Silver Tabby, or White Kitten counts the same way. Those are the short names on the Forever companion list.
+Forever can read the summoned cosmetic companion. `C_PetJournal.GetSummonedPetGUID` and the species id are the check. The seven cat-carrier species are Bombay Cat 40, Cornish Rex Cat 41, Black Tabby Cat 42, Orange Tabby Cat 43, Siamese Cat 44, Silver Tabby Cat 45, and White Kitten 46. A renamed pet still counts. Any other companion does not, including other cats. A hunter pet does not, and the check does not ask whether a hunter pet is dead. The player's own death clears the button until they are alive again. If the classic critter list is present, a summoned critter named Bombay, Cornish Rex, Black Tabby, Orange Tabby, Siamese, Silver Tabby, or White Kitten counts the same way. Those are the short names on the Forever companion list.
 
 Every 10 minutes, while the module is on and the player is alive, look again. The first time none of those cats is out, print a local warning. On the next check, if that cat is still not out, send `PET_SUMMON_BAD` once. Summoning one of those cats clears the warning. The line is not a ledger row. Classic could not see the carrier cat, so `PetTracker.lua` lines 157–166 toggled a boolean on click. Do not keep that toggle.
 
@@ -1254,7 +1255,7 @@ These four questions are resolved. The answers below are the design. There is no
 6. **No GUILD addon channel.** The classic master beacon, tail-bell jingle, paw squeak, and layer invite all use it. Whispers to the owner and the master are the data path for state and scores. The owner whisper `Prox` carries coordinates for the distance check. Everyone else, when the kitten is in a party, gets one `PARTY` sound token and no coordinates. `RAID` is not used.
 7. **Headpets, slack, and naps are counters on the ledger, flushed immediately when a nap or slack session completes.** They do not grow an emote log and they do not need `CleanUp.lua`. `slackMin` is written once, at the end of a counting session. A sleep suppression latches for that rest. The nap start and the slack `/sleep` path call `issecretvalue(msg)` before `:lower()` or `find`. A secret emote does not start a nap and does not latch sleep.
 8. **Movement never calls `UnitPosition`, and `issecretvalue` is the first use of a speed or moving return.** Heel speed enforcement runs only on `{ kind = "speed" }`. A hidden sample does not fail heels and does not end a nap. A non-secret bool with `moving == true` ends a nap and does not fail heels.
-9. **Submissiveness and heat formulas are copied, not redesigned.** Rewards and the deny-to-70 behavior stay comparable. Weekly orgasm and deny counters are a second pair so the scorecard can reset without changing the lifetime formula.
+9. **Heat formula and deny-to-70 stay as copied.** Rewards stay comparable. Weekly orgasm and deny counters are a second pair so the scorecard can reset. Submissiveness uses denials since local midnight, not the lifetime deny count. The lifetime count is still stored and shown.
 10. **Discord stays outside the game.** The Guild Master client only saves the scorecard. There is no window and no copy box. A later companion reads the account SavedVariables while the client is closed, posts to Discord, and deletes a week only after Discord has accepted it. SavedVariables do not flush continuously, so the design does not pretend they do.
 11. **Flavor lines default on and are not parsed.** That matches the locked product decision and removes the temptation to scrape guild chat. A `Cmd` is the only trigger. After `Ack` `ok:1`, the owner still whispers the classic button sentence and the kitten still whispers the matching `CCT_Messages` reply. Typing either sentence does nothing.
 12. **Layer detection is out of v1. Force-group is in, and it leaves the party itself.** `NWB_CurrentLayer` will not work under Forever's GUID rules. `Cmd, op:group` invites the owner. If the kitten is already grouped, the client calls `C_PartyInfo.LeaveParty` and then `C_PartyInfo.InviteUnit`. The classic confirm frame does not ship.

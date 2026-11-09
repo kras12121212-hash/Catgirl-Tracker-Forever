@@ -384,12 +384,20 @@ local function OrgasmWire(state)
         end
     end
     local today = 0
+    local deniedToday = 0
+    local resetAt = nil
     if CCT.Submissiveness and type(CCT.Submissiveness.OrgasmsToday) == "function" then
         today = Whole(CCT.Submissiveness.OrgasmsToday(life, CCT.UnixNow()))
     end
+    if CCT.Submissiveness and type(CCT.Submissiveness.DenialsToday) == "function" then
+        deniedToday = Whole(CCT.Submissiveness.DenialsToday(life, CCT.UnixNow()))
+    end
+    if CCT.Submissiveness and type(CCT.Submissiveness.NextReset) == "function" then
+        resetAt = CCT.Submissiveness.NextReset(CCT.UnixNow())
+    end
     local week = Whole(type(state.counters) == "table" and state.counters.orgasm or 0)
     local denied = Whole(type(life) == "table" and life.denied or 0)
-    return total, today, week, denied, last
+    return total, today, week, denied, last, deniedToday, resetAt
 end
 
 local function PosKey(pos)
@@ -532,13 +540,17 @@ function CCT.Report.StateFields(state)
     Add(fields, "inst", state.instanceType or "")
     Add(fields, "heat", ShownHeat(state))
     Add(fields, "sub", tonumber(state.sub) or 0)
-    local orgTotal, orgDay, orgWeek, orgDeny, orgLast = OrgasmWire(state)
+    local orgTotal, orgDay, orgWeek, orgDeny, orgLast, orgDenyDay, dayReset = OrgasmWire(state)
     Add(fields, "orgTotal", orgTotal)
     Add(fields, "orgDay", orgDay)
     Add(fields, "orgWeek", orgWeek)
     Add(fields, "orgDeny", orgDeny)
+    Add(fields, "orgDenyDay", orgDenyDay)
     if orgLast ~= nil then
         Add(fields, "orgLast", math.floor(orgLast))
+    end
+    if tonumber(dayReset) then
+        Add(fields, "dayReset", math.floor(dayReset))
     end
     local locks = state.locks or {}
     local binds = CCT.State and CCT.State.LockBinds or {}

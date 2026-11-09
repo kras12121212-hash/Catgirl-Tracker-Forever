@@ -348,6 +348,8 @@ function CCT.Corroboration.ApplyState(sender, parsed)
             today = tonumber(fields.orgday) or 0,
             week = tonumber(fields.orgweek) or 0,
             denied = tonumber(fields.orgdeny) or 0,
+            deniedToday = tonumber(fields.orgdenyday) or 0,
+            resetsAt = tonumber(fields.dayreset),
             last = tonumber(fields.orglast),
         },
         locks = LockTable(parsed.many),

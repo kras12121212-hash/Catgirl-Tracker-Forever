@@ -392,7 +392,7 @@ local function RecordOrgasm(now)
     local char = Char()
     if type(char) == "table" then
         if type(char.life) ~= "table" then
-            char.life = { denied = 0, orgasms = {} }
+            char.life = { denied = 0, orgasms = {}, denials = {} }
         end
         if type(char.life.orgasms) ~= "table" then
             char.life.orgasms = {}
@@ -400,9 +400,13 @@ local function RecordOrgasm(now)
         local list = char.life.orgasms
         local total = tonumber(char.life.total) or #list
         char.life.total = total + 1
-        list[#list + 1] = tonumber(now) or CCT.UnixNow()
-        while #list > ORGASM_CAP do
-            table.remove(list, 1)
+        if CCT.Submissiveness and type(CCT.Submissiveness.PushStamp) == "function" then
+            CCT.Submissiveness.PushStamp(list, tonumber(now) or CCT.UnixNow())
+        else
+            list[#list + 1] = tonumber(now) or CCT.UnixNow()
+            while #list > ORGASM_CAP do
+                table.remove(list, 1)
+            end
         end
     end
     if CCT.State and CCT.State.AddCounter then

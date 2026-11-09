@@ -1837,12 +1837,33 @@ local function FormatOrgasmTime(stamp)
     return tostring(math.floor(stamp))
 end
 
+local function TodayResetLine(stamp)
+    stamp = tonumber(stamp)
+    if stamp == nil or stamp <= 0 then
+        return "Today resets at: unknown"
+    end
+    local when = FormatOrgasmTime(stamp)
+    local nowStamp = CCT.UnixNow()
+    if type(nowStamp) ~= "number" then
+        return "Today resets at: " .. when
+    end
+    local left = math.floor(stamp - nowStamp)
+    if left < 0 then
+        return "Today resets at: " .. when .. " (passed, waiting for the kitten)"
+    end
+    local hours = math.floor(left / 3600)
+    local mins = math.floor((left % 3600) / 60)
+    return string.format("Today resets at: %s (%dh %dm)", when, hours, mins)
+end
+
 local function HeatLines(heat, state)
     local orgasm = type(state) == "table" and state.orgasm or nil
     local total = type(orgasm) == "table" and tonumber(orgasm.total) or 0
     local today = type(orgasm) == "table" and tonumber(orgasm.today) or 0
     local week = type(orgasm) == "table" and tonumber(orgasm.week) or 0
     local denied = type(orgasm) == "table" and tonumber(orgasm.denied) or 0
+    local deniedToday = type(orgasm) == "table" and tonumber(orgasm.deniedToday) or 0
+    local resetsAt = type(orgasm) == "table" and orgasm.resetsAt or nil
     local last = type(orgasm) == "table" and orgasm.last or nil
     return table.concat({
         string.format("Kitten Heat Bar: %d / 100", heat),
@@ -1851,6 +1872,8 @@ local function HeatLines(heat, state)
         "Orgasms Today: " .. tostring(today or 0),
         "Orgasms This Week: " .. tostring(week or 0),
         "Denied Orgasms: " .. tostring(denied or 0),
+        "Denied Today: " .. tostring(deniedToday or 0),
+        TodayResetLine(resetsAt),
     }, "\n")
 end
 

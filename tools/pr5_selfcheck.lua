@@ -573,6 +573,20 @@ check("heat bar default point", heatBar.point[1] == "CENTER" and heatBar.point[4
 check("sub bar exists", subBar ~= nil and subBar.width == 240 and subBar.height == 18 and subBar.shown == true)
 check("sub bar default point", subBar.point[1] == "CENTER" and subBar.point[5] == -230)
 check("sub text", subBar.text and type(subBar.text.value) == "string" and subBar.text.value:find("Kitten Submissiveness:", 1, true) ~= nil)
+local dayLine = frameNamed("CatgirlDayReset")
+check(
+    "kitten sees when today resets",
+    dayLine ~= nil
+        and dayLine.shown == true
+        and dayLine.text
+        and type(dayLine.text.value) == "string"
+        and dayLine.text.value:find("Orgasms today:", 1, true) ~= nil
+        and dayLine.text.value:find("Denials today:", 1, true) ~= nil
+        and dayLine.text.value:find("Resets at", 1, true) ~= nil
+        and dayLine.point
+        and dayLine.point[1] == "TOP"
+        and dayLine.point[2] == subBar
+)
 check("reachable bind maximum", CCT.Submissiveness.MAX_BINDS == 20)
 
 heatBar:SetPoint("TOPLEFT", UIParent, "TOPLEFT", 12, -34)
@@ -696,10 +710,15 @@ dressOff()
 CCT.State.SetHeelLevel("maid", 5)
 CCT.State.SetHeelLevel("high", 1)
 CCT.State.SetHeelLevel("ballet", 1)
-char().life.denied = 10
+char().life.denied = 40
+char().life.denials = {}
+for _ = 1, 10 do
+    char().life.denials[#char().life.denials + 1] = now
+end
 char().life.orgasms = {}
 CCT.Submissiveness.Recompute(now)
 check("submissiveness reaches seventy", state().sub == 70, "sub " .. tostring(state().sub))
+check("lifetime denials do not raise submissiveness", char().life.denied == 40 and CCT.Submissiveness.DenialsToday(char().life, now) == 10)
 CCT.State.SetHeat(50)
 CCT.Heat.AddDelta(-11)
 check("a matching negative delta flips", near(state().heat, 61, 0.001), "heat " .. tostring(state().heat))
@@ -719,6 +738,7 @@ CCT.State.SetHeelLevel("maid", 1)
 CCT.State.SetHeelLevel("high", 1)
 CCT.State.SetHeelLevel("ballet", 1)
 char().life.denied = 3
+char().life.denials = { now, now, now }
 char().life.orgasms = {}
 CCT.State.ApplyToy("vibes_ears")
 CCT.State.ApplyToy("ear_piercings")
@@ -738,6 +758,7 @@ CCT.Submissiveness.Recompute(now)
 char().life.denied = 0
 char().life.total = 0
 char().life.orgasms = {}
+char().life.denials = {}
 CCT.State.SetBelt(false)
 CCT.State.SetHeat(0)
 local orgasmsBefore = state().counters.orgasm
@@ -762,6 +783,8 @@ check(
         and tonumber(orgasmField("orgday")) == 1
         and tonumber(orgasmField("orgweek")) == state().counters.orgasm
         and tonumber(orgasmField("orgdeny")) == 0
+        and tonumber(orgasmField("orgdenyday")) == 0
+        and tonumber(orgasmField("dayreset")) == CCT.Submissiveness.NextReset(now)
         and tonumber(orgasmField("orglast")) == char().life.orgasms[1]
 )
 check("an allowed orgasm does not whisper", #sent == sentBeforeOrgasm)
@@ -800,20 +823,63 @@ CCT.Heat.Add(100)
 check("a denied orgasm sets heat to seventy", state().heat == 70 and state().counters.deny == denyBefore + 1 and char().life.denied == lifeDeniedBefore + 1, "heat " .. tostring(state().heat) .. " deny " .. tostring(state().counters.deny))
 check("a denied orgasm does not flash", flash.shown ~= true and #afters == aftersBeforeDeny)
 check("deny is not counted twice", state().counters.deny == denyBefore + 1)
+check("a denial today is stored", CCT.Submissiveness.DenialsToday(char().life, now) == 1 and #char().life.denials == 1)
+local resetCaption = frameNamed("CatgirlDayReset")
+check(
+    "the kitten line counts the denial",
+    resetCaption and resetCaption.text and resetCaption.text.value:find("Denials today: 1", 1, true) ~= nil
+)
 CCT.State.SetBelt(false)
 
 local todayBefore = CCT.Submissiveness.OrgasmsToday(char().life, now)
 char().life.orgasms[#char().life.orgasms + 1] = now
 check("today's orgasm counts", CCT.Submissiveness.OrgasmsToday(char().life, now) == todayBefore + 1)
-char().life.denied = 4
+char().life.denied = 12
+char().life.denials = { now, now, now, now }
 CCT.State.SetHeelLevel("maid", 1)
 CCT.State.SetGag("small")
 CCT.State.SetBell(true)
 CCT.Submissiveness.Recompute(now)
-local expectedSub = 3 * math.max(1, 4 - CCT.Submissiveness.OrgasmsToday(char().life, now)) * 2
-check("submissiveness uses denies, today, and binds", state().sub == expectedSub, "sub " .. tostring(state().sub) .. " expected " .. tostring(expectedSub))
+local deniedToday = CCT.Submissiveness.DenialsToday(char().life, now)
+local expectedSub = 3 * math.max(1, deniedToday - CCT.Submissiveness.OrgasmsToday(char().life, now)) * 2
+check("submissiveness uses denials today and binds", state().sub == expectedSub and deniedToday == 4 and char().life.denied == 12, "sub " .. tostring(state().sub) .. " expected " .. tostring(expectedSub))
 dressOff()
+local yesterdayParts = os.date("*t", now)
+yesterdayParts.hour = 12
+yesterdayParts.min = 0
+yesterdayParts.sec = 0
+yesterdayParts.day = yesterdayParts.day - 1
+local yesterday = os.time(yesterdayParts)
+char().life.denied = 8
+char().life.denials = { yesterday }
+char().life.orgasms = {}
+CCT.State.SetHeelLevel("maid", 1)
+CCT.State.SetHeelLevel("high", 1)
+CCT.State.SetHeelLevel("ballet", 1)
+CCT.Submissiveness.Recompute(now)
+check("yesterday's denial does not count", state().sub == 3 and CCT.Submissiveness.DenialsToday(char().life, now) == 0, "sub " .. tostring(state().sub))
+local daySends = 0
+local originalSendState = CCT.Report.SendState
+CCT.Report.SendState = function(...)
+    daySends = daySends + 1
+    return originalSendState(...)
+end
+local savedNow = now
+local tomorrowParts = os.date("*t", now)
+tomorrowParts.hour = 12
+tomorrowParts.min = 0
+tomorrowParts.sec = 0
+tomorrowParts.day = tomorrowParts.day + 1
+now = os.time(tomorrowParts)
+local toldOwner = CCT.Submissiveness.Recompute(now)
+check("a new day tells the owner", daySends == 1 and toldOwner ~= nil, "sends " .. tostring(daySends))
+check("the kitten line shows the new day", resetCaption.text.value:find("Denials today: 0", 1, true) ~= nil and resetCaption.text.value:find("Resets at", 1, true) ~= nil)
+now = savedNow
+CCT.Submissiveness.Recompute(now)
+check("turning the clock back does not send again", daySends == 1, "sends " .. tostring(daySends))
+CCT.Report.SendState = originalSendState
 char().life.denied = 0
+char().life.denials = {}
 char().life.orgasms = {}
 
 local toyIds = {}

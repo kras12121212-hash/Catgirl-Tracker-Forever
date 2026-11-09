@@ -124,6 +124,7 @@ local function NewLife()
         denied = 0,
         total = 0,
         orgasms = {},
+        denials = {},
     }
 end
 
@@ -160,6 +161,9 @@ local function RepairChar(char)
         end
         if type(char.life.orgasms) ~= "table" then
             char.life.orgasms = {}
+        end
+        if type(char.life.denials) ~= "table" then
+            char.life.denials = {}
         end
         local seen = #char.life.orgasms
         local total = tonumber(char.life.total)

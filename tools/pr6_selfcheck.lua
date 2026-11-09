@@ -883,7 +883,8 @@ check(
         and browse.hours.cctEnabled == true
         and browse.status:GetText():find("Kitten: Kitten", 1, true) == 1
 )
-local orgasmParsed = CCT.Net.Parse("State,rev:20,gag:none,heat:4,sub:3,orgtotal:6,orgday:2,orgweek:4,orgdeny:9,orglast:1700000000")
+local resetAt = os.time() + (3 * 3600) + (12 * 60)
+local orgasmParsed = CCT.Net.Parse("State,rev:20,gag:none,heat:4,sub:3,orgtotal:6,orgday:2,orgweek:4,orgdeny:9,orgdenyday:3,dayreset:" .. tostring(resetAt) .. ",orglast:1700000000")
 local orgasmApplied = CCT.Corroboration.ApplyState("Kitten", orgasmParsed)
 local orgasmSummary = CCT.Control.Summary()
 local orgasmText = browse.stats and browse.stats.heatText and browse.stats.heatText:GetText() or ""
@@ -895,11 +896,15 @@ check(
         and orgasmSummary.state.orgasm.today == 2
         and orgasmSummary.state.orgasm.week == 4
         and orgasmSummary.state.orgasm.denied == 9
+        and orgasmSummary.state.orgasm.deniedToday == 3
+        and orgasmSummary.state.orgasm.resetsAt == resetAt
         and orgasmSummary.state.orgasm.last == 1700000000
         and orgasmText:find("Orgasm Counter: 6", 1, true) ~= nil
         and orgasmText:find("Orgasms Today: 2", 1, true) ~= nil
         and orgasmText:find("Orgasms This Week: 4", 1, true) ~= nil
         and orgasmText:find("Denied Orgasms: 9", 1, true) ~= nil
+        and orgasmText:find("Denied Today: 3", 1, true) ~= nil
+        and orgasmText:find("Today resets at: " .. date("%Y-%m-%d %H:%M", resetAt), 1, true) ~= nil
         and orgasmText:find("Last Orgasm: " .. orgasmWhen, 1, true) ~= nil
         and orgasmText:find("This Session", 1, true) == nil
 )

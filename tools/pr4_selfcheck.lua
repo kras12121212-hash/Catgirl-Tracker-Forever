@@ -287,6 +287,7 @@ end
 time = function()
     return now
 end
+date = os.date
 GetTime = time
 
 GetCursorPosition = function()

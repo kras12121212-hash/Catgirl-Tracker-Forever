@@ -1,6 +1,7 @@
--- Submissiveness from heel levels, lifetime denies, today's orgasms, and binds.
+-- Submissiveness from heel levels, denials since local midnight, today's orgasms, and binds.
 -- The reachable bind maximum is 20. The value is written with CCT.State.SetSub.
--- The bar is shown only when this character has an owner. Nothing is whispered.
+-- The bar is shown only when this character has an owner.
+-- A new local day asks CCT.Report to send the snapshot.
 -- This file does not send addon messages. It does not move feature state.
 
 local ADDON_NAME, CCT = ...
@@ -9,12 +10,15 @@ CCT.Submissiveness = {}
 
 local MAX_BINDS = 20
 local TICK = 2
+local STAMP_CAP = 50
 local BAR_NAME = "CatgirlSubmissivenessBar"
+local DAY_NAME = "CatgirlDayReset"
 local WIDTH = 240
 local HEIGHT = 18
 
 CCT.Submissiveness.MAX_BINDS = MAX_BINDS
 CCT.Submissiveness.TICK = TICK
+CCT.Submissiveness.STAMP_CAP = STAMP_CAP
 CCT.Submissiveness.WIDTH = WIDTH
 CCT.Submissiveness.HEIGHT = HEIGHT
 CCT.Submissiveness.pending = nil
@@ -22,6 +26,7 @@ CCT.Submissiveness.pending = nil
 local bar = nil
 local ticker = nil
 local computing = false
+local lastDayStart = nil
 
 local function State()
     if CCT.State and CCT.State.Get then
@@ -72,8 +77,7 @@ local function DayStart(stamp)
     return start
 end
 
-function CCT.Submissiveness.OrgasmsToday(life, now)
-    local list = life and life.orgasms
+local function CountSince(list, now)
     if type(list) ~= "table" then
         return 0
     end
@@ -89,6 +93,70 @@ function CCT.Submissiveness.OrgasmsToday(life, now)
         end
     end
     return count
+end
+
+function CCT.Submissiveness.PushStamp(list, now)
+    if type(list) ~= "table" then
+        return false
+    end
+    list[#list + 1] = tonumber(now) or CCT.UnixNow()
+    while #list > STAMP_CAP do
+        table.remove(list, 1)
+    end
+    return true
+end
+
+function CCT.Submissiveness.OrgasmsToday(life, now)
+    return CountSince(life and life.orgasms, now)
+end
+
+function CCT.Submissiveness.DenialsToday(life, now)
+    return CountSince(life and life.denials, now)
+end
+
+function CCT.Submissiveness.NextReset(now)
+    local stamp = tonumber(now) or CCT.UnixNow()
+    if type(date) ~= "function" or type(time) ~= "function" then
+        return nil
+    end
+    local parts = date("*t", stamp)
+    if type(parts) ~= "table" then
+        return nil
+    end
+    parts.hour = 0
+    parts.min = 0
+    parts.sec = 0
+    parts.day = (tonumber(parts.day) or 1) + 1
+    local resetAt = time(parts)
+    if type(resetAt) ~= "number" then
+        return nil
+    end
+    return resetAt
+end
+
+function CCT.Submissiveness.DayLine(life, now)
+    local stamp = tonumber(now) or CCT.UnixNow()
+    local orgasms = CCT.Submissiveness.OrgasmsToday(life, stamp)
+    local denials = CCT.Submissiveness.DenialsToday(life, stamp)
+    local resetAt = CCT.Submissiveness.NextReset(stamp)
+    local when = "midnight"
+    local remain = ""
+    if type(resetAt) == "number" and type(date) == "function" then
+        local clock = date("%H:%M", resetAt)
+        if type(clock) == "string" and clock ~= "" then
+            when = clock
+        end
+    end
+    if type(resetAt) == "number" and type(stamp) == "number" then
+        local left = math.floor(resetAt - stamp)
+        if left < 0 then
+            left = 0
+        end
+        local hours = math.floor(left / 3600)
+        local mins = math.floor((left % 3600) / 60)
+        remain = string.format(" (%dh %dm)", hours, mins)
+    end
+    return string.format("Orgasms today: %d. Denials today: %d. Resets at %s%s", orgasms, denials, when, remain)
 end
 
 function CCT.Submissiveness.BindCount(state)
@@ -145,12 +213,9 @@ end
 function CCT.Submissiveness.Value(state, life, now)
     local levels = state and state.heelLevel
     local levelSum = Level(levels, "maid") + Level(levels, "high") + Level(levels, "ballet")
-    local denied = life and tonumber(life.denied) or 0
-    if denied < 0 then
-        denied = 0
-    end
-    local today = CCT.Submissiveness.OrgasmsToday(life, now)
-    local diff = denied - today
+    local deniedToday = CCT.Submissiveness.DenialsToday(life, now)
+    local orgasmsToday = CCT.Submissiveness.OrgasmsToday(life, now)
+    local diff = deniedToday - orgasmsToday
     if diff <= 0 then
         diff = 1
     end
@@ -228,6 +293,10 @@ local function UpdateBar(value)
     if bar.text and bar.text.SetText then
         bar.text:SetText(string.format("Kitten Submissiveness: %d / 100", shown))
     end
+    local caption = bar.dayText
+    if caption and caption.text and caption.text.SetText then
+        caption.text:SetText(CCT.Submissiveness.DayLine(Char() and Char().life, CCT.UnixNow()))
+    end
 end
 
 local function EnsureBar()
@@ -269,6 +338,31 @@ local function EnsureBar()
             bar.text:SetText("Kitten Submissiveness: 0 / 100")
         end
     end
+    if CreateFrame then
+        local caption = CreateFrame("Frame", DAY_NAME, bar)
+        if caption.SetSize then
+            caption:SetSize(420, 16)
+        end
+        if caption.SetPoint then
+            caption:SetPoint("TOP", bar, "BOTTOM", 0, -2)
+        end
+        if caption.CreateFontString then
+            caption.text = caption:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+            if caption.text and caption.text.SetPoint then
+                caption.text:SetPoint("TOP", caption, "TOP", 0, 0)
+            end
+            if caption.text and caption.text.SetJustifyH then
+                caption.text:SetJustifyH("CENTER")
+            end
+            if caption.text and caption.text.SetText then
+                caption.text:SetText(CCT.Submissiveness.DayLine(nil, CCT.UnixNow()))
+            end
+        end
+        if caption.Hide then
+            caption:Hide()
+        end
+        bar.dayText = caption
+    end
     if bar.SetMovable then
         bar:SetMovable(true)
     end
@@ -308,15 +402,24 @@ function CCT.Submissiveness.Recompute(now)
     end
     computing = true
     local before = tonumber(state.sub) or 0
-    local value = CCT.Submissiveness.Value(state, Char() and Char().life, now)
+    local life = Char() and Char().life
+    local value = CCT.Submissiveness.Value(state, life, now)
     CCT.State.SetSub(value)
     state = State() or state
     local written = tonumber(state.sub) or value
     if written ~= before then
         CCT.Submissiveness.pending = written
     end
+    local dayStart = DayStart(tonumber(now) or CCT.UnixNow())
+    local rolled = lastDayStart ~= nil and dayStart ~= nil and dayStart > lastDayStart
+    if dayStart ~= nil then
+        lastDayStart = dayStart
+    end
     UpdateBar(written)
     computing = false
+    if rolled and CCT.Report and type(CCT.Report.SendState) == "function" then
+        CCT.Report.SendState()
+    end
     return written
 end
 
@@ -330,7 +433,13 @@ local function ShowBar(show)
         if frame.Show then
             frame:Show()
         end
+        if frame.dayText and frame.dayText.Show then
+            frame.dayText:Show()
+        end
         return
+    end
+    if frame.dayText and frame.dayText.Hide then
+        frame.dayText:Hide()
     end
     if frame.Hide then
         frame:Hide()

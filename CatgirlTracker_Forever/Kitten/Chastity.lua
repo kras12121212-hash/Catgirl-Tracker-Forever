@@ -179,9 +179,15 @@ local function AddDenied()
         local char = CCT.Saved.EnsureChar(short)
         if type(char) == "table" then
             if type(char.life) ~= "table" then
-                char.life = { denied = 0, orgasms = {} }
+                char.life = { denied = 0, orgasms = {}, denials = {} }
             end
             char.life.denied = (tonumber(char.life.denied) or 0) + 1
+            if type(char.life.denials) ~= "table" then
+                char.life.denials = {}
+            end
+            if CCT.Submissiveness and type(CCT.Submissiveness.PushStamp) == "function" then
+                CCT.Submissiveness.PushStamp(char.life.denials, CCT.UnixNow())
+            end
         end
     end
     if CCT.State and CCT.State.AddCounter then
