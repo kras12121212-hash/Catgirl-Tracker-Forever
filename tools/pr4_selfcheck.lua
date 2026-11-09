@@ -1261,6 +1261,68 @@ CCT.State.SetLock("gag", nil)
 CCT.State.SetLock("earmuffs", nil)
 check("clearing a lock leaves the worn state", state().locks.gag == nil and state().locks.earmuffs == nil and state().gag == "none")
 
+now = 200000
+CCT.State.SetGag("huge")
+CCT.State.SetLock("gag", 90)
+local keptUnlock = state().locks.gag.unlockAt
+CCT.State.SetGag("small")
+check("swapping a gag keeps its lock", state().gag == "small" and state().locks.gag ~= nil and state().locks.gag.unlockAt == keptUnlock)
+local linesBeforeUngag = #lines
+local noticesBeforeUngag = #notices
+CCT.State.SetGag("none")
+check(
+    "manual ungag clears the lock without expiry lines",
+    state().gag == "none"
+        and state().locks.gag == nil
+        and #lines == linesBeforeUngag
+        and #notices == noticesBeforeUngag
+)
+now = 210000
+CCT.State.SetLock("gag", 30)
+check("a lock can arm while the gag is off", state().gag == "none" and state().locks.gag.unlockAt == 210000 + 1800)
+CCT.State.SetGag("none")
+check("ungag cancels a lock that is still armed", state().locks.gag == nil)
+CCT.State.SetEars("heavy")
+CCT.State.SetLock("earmuffs", 10)
+CCT.State.SetEars("kitten")
+check("swapping earmuffs keeps the lock", state().ears == "kitten" and state().locks.earmuffs ~= nil)
+CCT.State.SetEars("none")
+check("removing earmuffs clears the lock", state().ears == "none" and state().locks.earmuffs == nil)
+CCT.State.SetBell(true)
+CCT.State.SetLock("bell", 10)
+CCT.State.SetBell(false)
+check("removing the bell clears the lock", state().bell == false and state().locks.bell == nil)
+CCT.State.SetTail(true)
+CCT.State.SetLock("tailbell", 10)
+CCT.State.SetTail(false)
+check("removing the tail bell clears the lock", state().tail == false and state().locks.tailbell == nil)
+CCT.State.SetMittens("locked")
+CCT.State.SetLock("mittens", 10)
+CCT.State.SetMittens("none")
+check("removing mittens clears the lock", state().mittens == "none" and state().locks.mittens == nil)
+CCT.State.SetHeels("maid")
+CCT.State.SetLock("heels", 10)
+CCT.State.SetHeels("high")
+check("swapping heels keeps the lock", state().heels == "high" and state().locks.heels ~= nil)
+CCT.State.SetHeels("none")
+check("removing heels clears the lock", state().heels == "none" and state().locks.heels == nil)
+CCT.State.SetBlind("light")
+CCT.State.SetLock("blindfold", 10)
+CCT.State.SetBlind("none")
+check("removing a blindfold clears the lock", state().blind == "none" and state().locks.blindfold == nil)
+CCT.State.SetBelt(true)
+CCT.State.SetBeltMode("deny")
+CCT.State.SetLock("chastitybelt", 10)
+CCT.State.SetBelt(false)
+check(
+    "removing the belt clears the lock",
+    state().belt == false and state().beltMode == "allow" and state().locks.chastitybelt == nil
+)
+CCT.State.SetBra(true)
+CCT.State.SetLock("chastitybra", 10)
+CCT.State.SetBra(false)
+check("removing the bra clears the lock", state().bra == false and state().locks.chastitybra == nil)
+
 local LOCKS = {
     {
         bind = "gag",

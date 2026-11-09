@@ -1,5 +1,6 @@
 -- Lock timers. A bind key expires through CCT.State.ExpireLock.
 -- The 1-second ticker and the login pass both use that setter.
+-- Turning the bind off clears its lock without these expiry lines.
 -- Offline time does not add worn minutes. An expired lock is removed once.
 -- This file does not send addon messages. It does not move feature state.
 

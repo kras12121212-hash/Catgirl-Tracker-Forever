@@ -626,12 +626,34 @@ function CCT.State.Bind(short)
     return live
 end
 
+-- A manual off cancels that bind's deadline. It does not print the expiry lines.
+-- Swapping to another worn value keeps the same unlockAt.
+-- ExpireLock is the only path that removes the bind because the clock ran out.
+local ENUM_LOCK = {
+    blind = "blindfold",
+    ears = "earmuffs",
+    mittens = "mittens",
+    heels = "heels",
+}
+
+local function DropLock(state, bind)
+    if type(bind) ~= "string" or type(state.locks) ~= "table" or state.locks[bind] == nil then
+        return false
+    end
+    state.locks[bind] = nil
+    return true
+end
+
 local function SetEnum(field, value, allowed)
     local state = Current()
     if state == nil or not allowed[value] then
         return false
     end
-    if state[field] == value then
+    local dropped = false
+    if value == "none" then
+        dropped = DropLock(state, ENUM_LOCK[field])
+    end
+    if state[field] == value and not dropped then
         return true
     end
     state[field] = value
@@ -651,7 +673,11 @@ function CCT.State.SetGag(value, stage)
             nextStage = 1
         end
     end
-    if state.gag == value and state.gagStage == nextStage then
+    local dropped = false
+    if value == "none" then
+        dropped = DropLock(state, "gag")
+    end
+    if state.gag == value and state.gagStage == nextStage and not dropped then
         return true
     end
     state.gag = value
@@ -696,13 +722,17 @@ function CCT.State.SetHeelLevel(which, level)
     return true
 end
 
-local function SetFlag(field, value)
+local function SetFlag(field, value, lockBind)
     local state = Current()
     if state == nil then
         return false
     end
     local flag = value and true or false
-    if state[field] == flag then
+    local dropped = false
+    if not flag then
+        dropped = DropLock(state, lockBind)
+    end
+    if state[field] == flag and not dropped then
         return true
     end
     state[field] = flag
@@ -711,11 +741,11 @@ local function SetFlag(field, value)
 end
 
 function CCT.State.SetBell(on)
-    return SetFlag("bell", on)
+    return SetFlag("bell", on, "bell")
 end
 
 function CCT.State.SetTail(on)
-    return SetFlag("tail", on)
+    return SetFlag("tail", on, "tailbell")
 end
 
 function CCT.State.SetJewel(on)
@@ -723,7 +753,7 @@ function CCT.State.SetJewel(on)
 end
 
 function CCT.State.SetBra(on)
-    return SetFlag("bra", on)
+    return SetFlag("bra", on, "chastitybra")
 end
 
 function CCT.State.SetPetSummoned(on)
@@ -773,7 +803,11 @@ function CCT.State.SetBelt(on)
         return false
     end
     local flag = on and true or false
-    if state.belt == flag and (flag or state.beltMode == "allow") then
+    local dropped = false
+    if not flag then
+        dropped = DropLock(state, "chastitybelt")
+    end
+    if state.belt == flag and (flag or state.beltMode == "allow") and not dropped then
         return true
     end
     state.belt = flag

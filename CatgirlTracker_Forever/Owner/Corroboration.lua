@@ -348,6 +348,9 @@ function CCT.Corroboration.ApplyState(sender, parsed)
         pos = row.state and row.state.pos or nil,
     }
     row.lastRev = rev
+    if CCT.Control and type(CCT.Control.Refresh) == "function" then
+        CCT.Control.Refresh()
+    end
     return true
 end
 
@@ -385,6 +388,9 @@ function CCT.Corroboration.ApplyPos(sender, parsed)
     row.state.pos = point
     if CCT.Report and CCT.Report.AppendTrail then
         CCT.Report.AppendTrail(row.trail, point, point.t)
+    end
+    if CCT.Control and type(CCT.Control.Refresh) == "function" then
+        CCT.Control.Refresh()
     end
     return true
 end

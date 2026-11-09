@@ -1,6 +1,7 @@
 -- Owner map pins for the assigned kitten's received trail.
 -- The module is off until /cctmodule enables KittenMapShow.
--- No day-offset history control. Nothing is drawn without a Pos.
+-- The settings slider picks a calendar day. The stored trail is still the short cap.
+-- Nothing is drawn without a Pos. Today also draws the latest position.
 
 local ADDON_NAME, CCT = ...
 
@@ -39,6 +40,83 @@ local function Enabled()
     return CCT.Module and CCT.Module.Enabled and CCT.Module.Enabled("KittenMapShow") == true
 end
 
+local function OwnerChar(create)
+    local short = CCT.Player and CCT.Player.short
+    if type(short) ~= "string" or short == "" or CCT.Saved == nil then
+        return nil
+    end
+    if create and type(CCT.Saved.EnsureChar) == "function" then
+        return CCT.Saved.EnsureChar(short)
+    end
+    local db = CCT.db
+    if type(db) ~= "table" or type(db.chars) ~= "table" then
+        return nil
+    end
+    return db.chars[short]
+end
+
+function CCT.Map.HistoryOffset()
+    local char = OwnerChar(false)
+    local value = char and tonumber(char.mapHistoryOffsetDays) or 0
+    if value == nil or value < 0 then
+        value = 0
+    end
+    if value > 30 then
+        value = 30
+    end
+    return math.floor(value + 0.5)
+end
+
+function CCT.Map.SetHistoryOffset(days)
+    local value = tonumber(days) or 0
+    if value < 0 then
+        value = 0
+    end
+    if value > 30 then
+        value = 30
+    end
+    value = math.floor(value + 0.5)
+    local char = OwnerChar(true)
+    if type(char) == "table" then
+        char.mapHistoryOffsetDays = value
+    end
+    return value
+end
+
+local function DayWindow(offset)
+    if type(time) ~= "function" or type(date) ~= "function" then
+        return nil, nil
+    end
+    local now = time()
+    if type(now) ~= "number" then
+        return nil, nil
+    end
+    local day = date("*t", now - (offset * 24 * 60 * 60))
+    if type(day) ~= "table" then
+        return nil, nil
+    end
+    day.hour = 0
+    day.min = 0
+    day.sec = 0
+    local startTime = time(day)
+    if type(startTime) ~= "number" then
+        return nil, nil
+    end
+    return startTime, startTime + (24 * 60 * 60)
+end
+
+local function OnSelectedDay(point, offset)
+    local startTime, endTime = DayWindow(offset)
+    if startTime == nil then
+        return true
+    end
+    local stamp = type(point) == "table" and tonumber(point.t) or nil
+    if stamp == nil then
+        return offset == 0
+    end
+    return stamp >= startTime and stamp < endTime
+end
+
 function CCT.Map.Points(mapID)
     if not Enabled() then
         return {}
@@ -48,16 +126,17 @@ function CCT.Map.Points(mapID)
         return {}
     end
     local want = tonumber(mapID)
+    local offset = CCT.Map.HistoryOffset()
     local points = {}
     local trail = row.trail or {}
     for i = 1, #trail do
         local point = trail[i]
-        if type(point) == "table" and (want == nil or point.mapID == want) then
+        if type(point) == "table" and (want == nil or point.mapID == want) and OnSelectedDay(point, offset) then
             points[#points + 1] = point
         end
     end
     local pos = row.state.pos
-    if want == nil or pos.mapID == want then
+    if type(pos) == "table" and (want == nil or pos.mapID == want) and (offset == 0 or OnSelectedDay(pos, offset)) then
         points[#points + 1] = pos
     end
     return points
