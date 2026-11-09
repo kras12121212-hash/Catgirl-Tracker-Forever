@@ -294,11 +294,19 @@ local function AddHeat(delta)
 end
 
 local function Line(action, part, stage, blocked)
+    local partKey = string.upper(part.id or "")
     local key
     if blocked then
-        key = "DISCIPLINE_" .. action.msgKey .. "_BLOCKED_" .. blocked
+        key = "DISCIPLINE_" .. action.msgKey .. "_" .. partKey .. "_BLOCKED_" .. blocked
     else
-        key = "DISCIPLINE_" .. action.msgKey .. "_" .. tostring(stage)
+        key = "DISCIPLINE_" .. action.msgKey .. "_" .. partKey .. "_" .. tostring(stage)
+    end
+    if not (CCT.Messages and CCT.Messages[key]) then
+        if blocked then
+            key = "DISCIPLINE_" .. action.msgKey .. "_BLOCKED_" .. blocked
+        else
+            key = "DISCIPLINE_" .. action.msgKey .. "_" .. tostring(stage)
+        end
     end
     if not (CCT.Messages and CCT.Messages[key]) then
         if blocked then

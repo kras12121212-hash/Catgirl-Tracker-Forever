@@ -184,6 +184,14 @@ local function MessageKey(toy, suffix)
     return "TOY_" .. toy.msgKey .. "_" .. suffix
 end
 
+local function KittenLine(toy, suffix, fallback)
+    local key = "TOY_KITTEN_" .. toy.msgKey .. "_" .. suffix
+    if CCT.Messages and CCT.Messages[key] then
+        return CCT.Msg(key)
+    end
+    return fallback
+end
+
 local function WhisperKey(sender, key, fallback, ...)
     if CCT.Messages and CCT.Messages[key] then
         Whisper(sender, CCT.Msg(key))
@@ -325,10 +333,10 @@ local function Apply(toy, sender)
         if other.vibe then
             SoundCall("SetToyVibeState", other.id, 0)
         end
-        Notify("Toy removed: " .. other.label .. ".")
+        Notify(KittenLine(other, "REMOVE", "Toy removed: " .. other.label .. "."))
     end
     WhisperKey(sender, MessageKey(toy, "APPLY"), "TOY_APPLY", toy.label)
-    Notify("Toy applied: " .. toy.label .. ".")
+    Notify(KittenLine(toy, "APPLY", "Toy applied: " .. toy.label .. "."))
     return true
 end
 
@@ -354,7 +362,7 @@ local function Remove(toy, sender)
         SoundCall("SetToyVibeState", toy.id, 0)
     end
     WhisperKey(sender, MessageKey(toy, "REMOVE"), "TOY_REMOVE", toy.label)
-    Notify("Toy removed: " .. toy.label .. ".")
+    Notify(KittenLine(toy, "REMOVE", "Toy removed: " .. toy.label .. "."))
     return true
 end
 
@@ -375,7 +383,7 @@ local function Vibe(toy, level, sender)
     end
     SoundCall("SetToyVibeState", toy.id, stage)
     WhisperKey(sender, MessageKey(toy, "VIBE_" .. stage), "TOY_VIBE_SET", toy.label, stage)
-    Notify(string.format("%s vibration set to %d.", toy.label, stage))
+    Notify(KittenLine(toy, "VIBE_" .. stage, string.format("%s vibration set to %d.", toy.label, stage)))
     return true
 end
 
@@ -404,7 +412,7 @@ local function Inflate(toy, sender, direction)
     local suffix = (direction == "deflate" and "DEFLATE_" or "INFLATE_") .. nextStage
     local fallback = direction == "deflate" and "TOY_DEFLATE_SET" or "TOY_INFLATE_SET"
     WhisperKey(sender, MessageKey(toy, suffix), fallback, toy.label, nextStage)
-    Notify(string.format("%s inflation stage %d.", toy.label, nextStage))
+    Notify(KittenLine(toy, suffix, string.format("%s inflation stage %d.", toy.label, nextStage)))
     return true
 end
 
@@ -419,7 +427,7 @@ local function Shock(toy, level, sender)
     AddHeat(CCT.Toys.ShockHeat(toy.id, stage))
     SoundCall("PlayToyShock", stage)
     WhisperKey(sender, MessageKey(toy, "SHOCK_" .. stage), "TOY_SHOCK", toy.label, stage)
-    Notify(string.format("%s shock intensity %d.", toy.label, stage))
+    Notify(KittenLine(toy, "SHOCK_" .. stage, string.format("%s shock intensity %d.", toy.label, stage)))
     return true
 end
 

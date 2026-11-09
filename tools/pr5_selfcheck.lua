@@ -988,12 +988,14 @@ CCT.State.SetBelt(true)
 playedBefore = #played
 local belted = cmd("Cmd,op:disc,cid:Belt,id:shock_wand,part:pussy,str:2,map:10,x:0.5000,y:0.5000,inst:7")
 check("a belt blocks before heat", belted.reason == "belt" and state().heat == 30 and #played == playedBefore, "heat " .. tostring(state().heat) .. " played " .. tostring(#played - playedBefore))
+check("belt block tells her", notices[#notices] == "No spark reaches your pussy. The belt keeps it sealed, nya.")
 local farBelt = cmd("Cmd,op:disc,cid:FarBelt,id:shock_wand,part:pussy,str:2,map:10,x:0.9000,y:0.5000,inst:7")
 check("too far wins over the belt", farBelt.reason == "toofar")
 CCT.State.SetBelt(false)
 CCT.State.SetBra(true)
 local bra = cmd("Cmd,op:disc,cid:Bra,id:pinch,part:nipples,str:1,map:10,x:0.5000,y:0.5000,inst:7")
 check("a bra blocks", bra.reason == "bra" and state().heat == 30)
+check("bra block tells her", notices[#notices] == "Your owner cannot pinch your nipples. The chastity bra has them sealed away.")
 CCT.State.SetBra(false)
 
 playedBefore = #played
@@ -1011,7 +1013,7 @@ local hit = cmd("Cmd,op:disc,cid:Hit,id:spank_hand,part:butt,str:9,map:10,x:0.50
 check("strength clamps and heat comes from the config", hit.ok == true and near(state().heat, 35, 0.001), "heat " .. tostring(state().heat))
 check("discipline plays the local file", #played == playedBefore + 1 and played[#played].path:find("spank.wav", 1, true) ~= nil and played[#played].channel == "Master")
 check("discipline remembers an unsent body", CCT.Sounds.unsent[#CCT.Sounds.unsent]:find("DiscSound", 1, true) ~= nil and #CCT.Sounds.unsent == unsentBefore + 1)
-check("discipline tells the kitten locally", lines[#lines]:find("Spank Hand on Butt (strength 5).", 1, true) ~= nil and notices[#notices] == "Spank Hand on Butt (strength 5).")
+check("discipline tells the kitten locally", lines[#lines]:find("A hard spank. You whimper, eyes wet, and you stay for the next one.", 1, true) ~= nil and notices[#notices] == "A hard spank. You whimper, eyes wet, and you stay for the next one.")
 check("discipline icon is local", icons[1] == "Textures/Hand.tga")
 check("a hit does not whisper", #sent == sentBefore)
 
