@@ -63,7 +63,7 @@ The Owner's maid list is sent to the kitten as a hidden addon message. The kitte
 
 ## The CatNya pet button
 
-A draggable button runs a macro named CatNya. The macro uses the seven cat-carrier items. The addon reads the summoned cosmetic cat. A hunter pet does not count, and neither does any other companion. Pet tracking starts on. Every ten minutes, if one of those cats is not out, you get a warning. If it is still not out on the next check, one guild line says the kitten forgot to summon the cat. That line is not a row on the weekly report.
+A small draggable window summons a cat from the pet collection. The seven cat-carrier cats count. The carrier item itself does not summon one anymore. The button label follows whether that cat is out, and it changes back to summon when you die. The window shows how much time is left before the next check. A hunter pet does not count, and neither does any other companion. Pet tracking starts on. Every ten minutes, if one of those cats is not out, you get a warning. If it is still not out on the next check, one guild line says the kitten forgot to summon the cat. That line is not a row on the weekly report.
 
 ## Nya
 

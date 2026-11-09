@@ -525,18 +525,30 @@ end
 fire("PLAYER_REGEN_ENABLED")
 check("regen writes a general macro", #created == 1 and created[1].name == "CatNya" and created[1].icon == "INV_Misc_QuestionMark" and created[1].perChar == nil and created[1].body == CCT.Pet.MacroBody())
 local summon = frameNamed("CatgirlSummonCatButton")
-check("pet button is secure", summon ~= nil and summon.template == "UIPanelButtonTemplate,SecureActionButtonTemplate" and summon.attrs.macrotext1 == CCT.Pet.MacroBody() and summon.attrs.type1 == "macro")
+local box = frameNamed("CatgirlSummonCatBox")
+check(
+    "summon box holds the button",
+    box ~= nil
+        and summon ~= nil
+        and summon.parent == box
+        and summon.template == "UIPanelButtonTemplate"
+        and box.template == "BackdropTemplate"
+        and summon.attrs.macrotext1 == nil
+)
 local moved = CCT.Saved.EnsureChar("Kitten")
-summon.scripts.OnDragStop(summon)
+box.scripts.OnDragStop(box)
 check("non string point is not saved", type(moved.petButton) ~= "table")
-summon.pointReturn = { "BOTTOM", nil, "BOTTOM", 3, -20 }
-summon.scripts.OnDragStop(summon)
+box.pointReturn = { "BOTTOM", nil, "BOTTOM", 3, -20 }
+box.scripts.OnDragStop(box)
 check("string point is saved", moved.petButton and moved.petButton.point == "BOTTOM" and moved.petButton.x == 3 and moved.petButton.y == -20)
+check("status counts the ten minutes", CCT.Pet.StatusText(1000) == "Summon in 10:00" and CCT.Pet.StatusText(1300) == "Summon in 5:00")
 local clicked = CCT.Pet.Click()
-check("click does not decide the cat", clicked == true and CCT.Pet.Summoned() == false and summon.text == "Summon your cat Nya !")
+check("click without a collected cat does not mark it summoned", clicked == false and CCT.Pet.Summoned() == false and summon.text == "Summon your cat Nya !")
 check("pet check ignores a hunter pet", petSrc:find('GetCompanionInfo, "CRITTER"', 1, true) ~= nil and petSrc:find("UnitExists", 1, true) == nil and petSrc:find("HasPetUI", 1, true) == nil and petSrc:find("PetIsDead", 1, true) == nil)
 local summonedGuid = nil
 local petInfo = nil
+local summonedWith = nil
+local dismissed = false
 C_PetJournal = {
     GetSummonedPetGUID = function()
         return summonedGuid
@@ -544,11 +556,29 @@ C_PetJournal = {
     GetPetInfoTableByPetID = function()
         return petInfo
     end,
+    FindPetIDByName = function(name)
+        if name == "Black Tabby Cat" then
+            return 42, "BattlePet-own"
+        end
+        return nil
+    end,
+    SummonPetByGUID = function(guid)
+        summonedWith = guid
+    end,
+    DismissSummonedPet = function()
+        dismissed = true
+    end,
 }
 summonedGuid = "BattlePet-1"
 petInfo = { speciesID = 42, name = "Black Tabby Cat", customName = "Fluffy" }
 fire("COMPANION_UPDATE")
-check("black tabby carrier counts", CCT.Pet.Summoned() == true and summon.text == "Good Kitten!, You Cat is Summoned")
+check("black tabby carrier counts", CCT.Pet.Summoned() == true and summon.text == "Good Kitten!, You Cat is Summoned" and CCT.Pet.StatusText() == "Cat is summoned")
+dead = true
+fire("PLAYER_DEAD")
+check("death asks to summon again", summon.text == "Summon your cat Nya !" and CCT.Pet.Summoned() == false and CCT.Pet.StatusText(1000) == "Summon in 10:00")
+dead = false
+fire("PLAYER_ALIVE")
+check("revive shows the cat that is still out", summon.text == "Good Kitten!, You Cat is Summoned" and CCT.Pet.Summoned() == true)
 petInfo = { speciesID = 999, name = "Calico Cat", customName = "Fluffy" }
 fire("COMPANION_UPDATE")
 check("another cat does not count", CCT.Pet.Summoned() == false and summon.text == "Summon your cat Nya !")
@@ -559,6 +589,14 @@ summonedGuid = nil
 petInfo = nil
 fire("COMPANION_UPDATE")
 check("no cosmetic pet is not summoned", CCT.Pet.Summoned() == false)
+check("click summons the collected cat", CCT.Pet.Click() == true and summonedWith == "BattlePet-own" and CCT.Pet.Summoned() == false)
+summonedGuid = "BattlePet-own"
+petInfo = { speciesID = 42, name = "Black Tabby Cat" }
+fire("COMPANION_UPDATE")
+check("click dismisses the collected cat", CCT.Pet.Click() == true and dismissed == true)
+summonedGuid = nil
+petInfo = nil
+fire("COMPANION_UPDATE")
 local critterName = nil
 local critterOut = false
 GetNumCompanions = function(kind)
