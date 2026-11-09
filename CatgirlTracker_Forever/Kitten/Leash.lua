@@ -159,6 +159,61 @@ local function HideButton()
     button:SetScript("PostClick", nil)
 end
 
+local function SpellName(id)
+    if id == nil then
+        return nil
+    end
+    if C_Spell and type(C_Spell.GetSpellName) == "function" then
+        local name = C_Spell.GetSpellName(id)
+        if type(name) == "string" and name ~= "" then
+            return name
+        end
+    end
+    if C_Spell and type(C_Spell.GetSpellInfo) == "function" then
+        local info = C_Spell.GetSpellInfo(id)
+        if type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+            return info.name
+        end
+    end
+    if type(GetSpellInfo) == "function" then
+        local info = GetSpellInfo(id)
+        if type(info) == "string" and info ~= "" then
+            return info
+        end
+        if type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+            return info.name
+        end
+    end
+    return nil
+end
+
+local function CaptureSlot(slot)
+    if type(GetActionInfo) ~= "function" then
+        return false
+    end
+    local actionType, id, subType, spellID = GetActionInfo(slot)
+    if not actionType then
+        return false
+    end
+    local row = {
+        actionType = actionType,
+        id = id,
+        subType = subType,
+    }
+    if spellID ~= nil and spellID ~= id then
+        row.spellID = spellID
+    end
+    if actionType == "spell" then
+        row.name = SpellName(spellID or id)
+    elseif actionType == "macro" and type(GetActionText) == "function" then
+        local text = GetActionText(slot)
+        if type(text) == "string" and text ~= "" then
+            row.name = text
+        end
+    end
+    return row
+end
+
 local function Capture()
     local char = Char()
     if char == nil then
@@ -166,16 +221,7 @@ local function Capture()
     end
     local slots = {}
     for slot = 1, SLOT_COUNT do
-        if type(GetActionInfo) == "function" then
-            local actionType, id, subType = GetActionInfo(slot)
-            if actionType then
-                slots[slot] = { actionType = actionType, id = id, subType = subType }
-            else
-                slots[slot] = false
-            end
-        else
-            slots[slot] = false
-        end
+        slots[slot] = CaptureSlot(slot)
     end
     char.leashSlots = slots
     return true
@@ -228,6 +274,106 @@ local function StampBar(macroId)
     end
 end
 
+local function CursorHolding()
+    if type(GetCursorInfo) ~= "function" then
+        return true
+    end
+    return GetCursorInfo() ~= nil
+end
+
+local function TryPickup(fn, ...)
+    if type(fn) ~= "function" then
+        return false
+    end
+    if type(ClearCursor) == "function" then
+        ClearCursor()
+    end
+    local ok = pcall(fn, ...)
+    return ok and CursorHolding()
+end
+
+local function SpellKeys(data)
+    local keys = {}
+    local seen = {}
+    local function add(value)
+        if (type(value) ~= "number" and type(value) ~= "string") or value == "" or seen[value] then
+            return
+        end
+        seen[value] = true
+        keys[#keys + 1] = value
+    end
+    add(data.spellID)
+    add(data.id)
+    add(data.name)
+    return keys
+end
+
+local function PickupSpellbook(key)
+    if C_SpellBook == nil or type(C_SpellBook.FindSpellBookSlotForSpell) ~= "function" then
+        return false
+    end
+    if type(C_SpellBook.PickupSpellBookItem) ~= "function" then
+        return false
+    end
+    local ok, index, bank = pcall(C_SpellBook.FindSpellBookSlotForSpell, key, true, true)
+    if not ok or index == nil or bank == nil then
+        return false
+    end
+    return TryPickup(C_SpellBook.PickupSpellBookItem, index, bank)
+end
+
+-- GetActionInfo's spell id does not pick up on Forever. C_Spell.PickupSpell
+-- ignores that id, and the global PickupSpell is not the call that fills the cursor.
+-- The spellbook slot for the saved name still picks the original spell up.
+local function PickupSaved(data)
+    local kind = data.actionType
+    if kind == "spell" then
+        local keys = SpellKeys(data)
+        if C_Spell and type(C_Spell.PickupSpell) == "function" then
+            for i = 1, #keys do
+                if TryPickup(C_Spell.PickupSpell, keys[i]) then
+                    return true
+                end
+            end
+        end
+        if type(PickupSpell) == "function" then
+            for i = 1, #keys do
+                if TryPickup(PickupSpell, keys[i]) then
+                    return true
+                end
+            end
+        end
+        if data.name ~= nil and type(PickupSpellBookItem) == "function" and TryPickup(PickupSpellBookItem, data.name) then
+            return true
+        end
+        for i = 1, #keys do
+            if PickupSpellbook(keys[i]) then
+                return true
+            end
+        end
+        return false
+    end
+    if kind == "macro" and type(PickupMacro) == "function" then
+        if data.name ~= nil and TryPickup(PickupMacro, data.name) then
+            return true
+        end
+        return data.id ~= nil and TryPickup(PickupMacro, data.id)
+    end
+    if kind == "item" then
+        if data.id ~= nil and C_Item and type(C_Item.PickupItem) == "function" and TryPickup(C_Item.PickupItem, data.id) then
+            return true
+        end
+        return data.id ~= nil and type(PickupItem) == "function" and TryPickup(PickupItem, data.id)
+    end
+    if kind == "companion" and data.id ~= nil and type(PickupCompanion) == "function" then
+        return TryPickup(PickupCompanion, data.id, data.subType)
+    end
+    if kind == "equipmentset" and data.id ~= nil and type(PickupEquipmentSet) == "function" then
+        return TryPickup(PickupEquipmentSet, data.id)
+    end
+    return false
+end
+
 local function RestoreSlots()
     if InCombat() then
         return false
@@ -240,14 +386,7 @@ local function RestoreSlots()
     for slot = 1, SLOT_COUNT do
         local data = slots[slot]
         if type(data) == "table" and data.actionType then
-            if data.actionType == "spell" and type(PickupSpell) == "function" then
-                PickupSpell(data.id)
-            elseif data.actionType == "macro" and type(PickupMacro) == "function" then
-                PickupMacro(data.id)
-            elseif data.actionType == "item" and type(PickupItem) == "function" then
-                PickupItem(data.id)
-            end
-            if type(PlaceAction) == "function" then
+            if PickupSaved(data) and type(PlaceAction) == "function" then
                 PlaceAction(slot)
             end
         elseif type(PickupAction) == "function" then

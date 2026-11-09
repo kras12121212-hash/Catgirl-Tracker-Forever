@@ -858,6 +858,65 @@ if button.scripts.PostClick then
 end
 check("leash is down", state().leash == false and char().leashSlots == nil)
 
+-- Forever leaves PickupSpell as a no-op for the id GetActionInfo saved.
+-- The spellbook slot for the saved name is what puts the spell back.
+actions[1] = { type = "spell", id = 100 }
+actions[3] = nil
+actions[120] = nil
+local oldPickupSpell = PickupSpell
+local spellTries = {}
+PickupSpell = function(id)
+    spellTries[#spellTries + 1] = id
+end
+GetCursorInfo = function()
+    if cursor then
+        return cursor.type, cursor.id
+    end
+end
+C_Spell = {
+    GetSpellName = function(id)
+        if id == 100 then
+            return "Fireball"
+        end
+    end,
+    PickupSpell = function(id)
+        spellTries[#spellTries + 1] = id
+    end,
+}
+C_SpellBook = {
+    FindSpellBookSlotForSpell = function(key)
+        if key == "Fireball" then
+            return 4, 0
+        end
+    end,
+    PickupSpellBookItem = function(index, bank)
+        check("spellbook bank can be zero", index == 4 and bank == 0)
+        oldPickupSpell(100)
+    end,
+}
+local named = CCT.Leash.Apply(true, "Nyx")
+check(
+    "spell name is kept for restore",
+    named == true
+        and char().leashSlots[1].actionType == "spell"
+        and char().leashSlots[1].id == 100
+        and char().leashSlots[1].name == "Fireball"
+        and char().leashSlots[3] == false
+)
+CCT.Leash.Apply(false, "Nyx")
+if button.scripts.PostClick then
+    button.scripts.PostClick()
+end
+check(
+    "spellbook restore puts the original spell back",
+    actions[1] ~= nil and actions[1].type == "spell" and actions[1].id == 100 and actions[3] == nil and char().leashSlots == nil
+)
+PickupSpell = oldPickupSpell
+C_Spell = nil
+C_SpellBook = nil
+GetCursorInfo = nil
+actions[1] = nil
+
 local syncBackup = char().leashSlots
 actions[5] = { type = "spell", id = 77 }
 CCT.State.SetLeash(true, "Nyx")
