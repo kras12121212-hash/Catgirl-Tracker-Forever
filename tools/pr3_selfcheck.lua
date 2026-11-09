@@ -454,8 +454,8 @@ bans("bells", bellsSrc)
 check("heels names the secret rule", heelsSrc:find("A secret sample is hidden and is not compared.", 1, true) ~= nil)
 check("heels names movement sampling", heelsSrc:find("CCT.Move.Sample", 1, true) ~= nil)
 check("heel sound interval is 7.0", heelsSrc:find("7.0", 1, true) ~= nil and heelsSrc:find("0.8", 1, true) == nil)
-check("bell wait is 120 to 300", bellsSrc:find("math.random(120, 300)", 1, true) ~= nil)
-check("bell has no 5 to 6 debug wait", bellsSrc:find("math.random(5, 6)", 1, true) == nil)
+check("bell wait is 120 to 300", bellsSrc:find("math.random(MIN_WAIT, MAX_WAIT)", 1, true) ~= nil)
+check("tail wait is 5 to 6", bellsSrc:find("math.random(TAIL_MIN_WAIT, TAIL_MAX_WAIT)", 1, true) ~= nil)
 check("mittens writes state", mittensSrc:find("CCT.State.SetMittens", 1, true) ~= nil)
 check(
     "heels writes state",
@@ -694,7 +694,7 @@ check("maid level is 2", CCT.State.Get().heelLevel.maid == 2)
 check("level up clears counted seconds", maidPractice.seconds == 0)
 check("practice is not on the saved state", CCT.State.Get().skillProgress == nil and CCT.State.Get().heelProgress == nil and CCT.State.Get().progress == nil)
 check("level up does not restart the warning ticker", warningTicker.cancelled == false and #activeWhere(tickers, 0.1) == 1)
-check("step file is the maid clip", played[#played].path:find("HighHeels3.wav", 1, true) ~= nil)
+check("step file is the maid clip", played[#played].path:find("HighHeels3.ogg", 1, true) ~= nil)
 
 local WARNING = "Kitten is Wearing High Heels you Cant Run or you will Fall !\n(Use Slow walk)"
 local failText = CCT.Msg("HEELS_FAIL", "Kitten", "High Heels", 1)
@@ -798,7 +798,7 @@ local balletPractice = CCT.Heels.Progress("ballet")
 check("bool moving plays the step loop", boolOn.sound == "play" and balletStep ~= nil and balletStep.interval == 7)
 check("bool moving does not train", balletPractice.seconds == 0 and balletPractice.walk == 0 and #balletPractice.window == 0)
 check("bool moving does not rewrite the bars", speedBar.text.value == textBeforeBool)
-check("ballet clip", played[#played].path:find("HighHeels12.wav", 1, true) ~= nil and played[#played].channel == "Master")
+check("ballet clip", played[#played].path:find("HighHeels12.ogg", 1, true) ~= nil and played[#played].channel == "Master")
 local stopsBeforeHidden = #stopped
 hiddenMove()
 local boolHidden = CCT.Heels.Tick()
@@ -891,6 +891,75 @@ check("heavy cursor art", cursorFrame.texture.path:find("heavypawmittens.tga", 1
 CCT.Mittens.Set("Nyx", "none")
 check("heavy off restores the spell", actions[1] ~= nil and actions[1].type == "spell" and actions[1].id == 100)
 
+local livePickup = PickupSpell
+PickupSpell = function() end
+GetCursorInfo = function()
+    if cursor then
+        return cursor.type, cursor.id
+    end
+end
+C_Spell = {
+    GetSpellName = function(id)
+        if id == 100 then
+            return "Fireball"
+        end
+        if id == 200 then
+            return "Frostbolt"
+        end
+    end,
+    PickupSpell = function() end,
+}
+C_SpellBook = {
+    FindSpellBookSlotForSpell = function(key)
+        if key == "Fireball" then
+            return 4, 0
+        end
+        if key == "Frostbolt" then
+            return 5, 0
+        end
+    end,
+    PickupSpellBookItem = function(index)
+        if index == 4 then
+            livePickup(100)
+        elseif index == 5 then
+            livePickup(200)
+        end
+    end,
+}
+actions[1] = { type = "spell", id = 100 }
+actions[2] = { type = "spell", id = 200 }
+clearList(places)
+CCT.Mittens.Set("Nyx", "locked")
+local covered
+for slot = 1, 2 do
+    if actions[slot] and actions[slot].type == "macro" then
+        covered = slot
+    end
+end
+local pawTicker = activeTickers(5)[1]
+local placesBeforeSwap = #places
+pawTicker.fn()
+local putBack = false
+for i = placesBeforeSwap + 1, #places do
+    local row = places[i]
+    if row.slot == covered and row.cursor and row.cursor.type == "spell" then
+        putBack = true
+    end
+end
+local macrosOnBar = 0
+for slot = 1, 12 do
+    if actions[slot] and actions[slot].type == "macro" then
+        macrosOnBar = macrosOnBar + 1
+    end
+end
+check("paw swap puts the covered spell back", covered ~= nil and putBack == true and macrosOnBar == 1 and actions[2].type == "spell" and actions[2].id == 200)
+CCT.Mittens.Set("Nyx", "none")
+PickupSpell = livePickup
+GetCursorInfo = nil
+C_Spell = nil
+C_SpellBook = nil
+actions[2] = nil
+
 clearList(macros)
 macroIndex = 0
 combat = true
@@ -943,7 +1012,7 @@ check("window end placed the spell back", places[#places].cursor.type == "spell"
 now = 10
 clearList(played)
 fire("UNIT_SPELLCAST_SUCCEEDED", "player")
-check("squeak cast", #played == 1 and played[1].path:find("pawsqueak1.wav", 1, true) ~= nil and played[1].channel == "Master")
+check("squeak cast", #played == 1 and played[1].path:find("pawsqueak1.ogg", 1, true) ~= nil and played[1].channel == "Master")
 now = 11
 fire("UNIT_SPELLCAST_SUCCEEDED", "player")
 check("squeak cooldown", #played == 1)
@@ -956,7 +1025,7 @@ CCT.Mittens.Set("Nyx", "locked")
 clearList(played)
 now = 20
 fire("UNIT_SPELLCAST_SUCCEEDED", "player")
-check("locked cast creaks", #played == 1 and played[1].path:find("creak%-1%.wav") ~= nil)
+check("locked cast creaks", #played == 1 and played[1].path:find("creak%-1%.ogg") ~= nil)
 now = 21
 fire("UNIT_SPELLCAST_SUCCEEDED", "player")
 check("creak cooldown", #played == 1)
@@ -1020,7 +1089,11 @@ check(
         and tail.point[5] == -84
         and tail.fonts[1].value == "Kitten is wearing a tail bell; it will ring with every step."
 )
-check("two bell timers", #afters == afterBefore + 2 and afters[#afters].delay == 180)
+check(
+    "two bell timers",
+    #afters == afterBefore + 2 and afters[afterBefore + 1].delay == 180 and afters[#afters].delay == 5
+)
+check("tail rolled 5 to 6", randomArgs[#randomArgs][1] == 5 and randomArgs[#randomArgs][2] == 6)
 local collarFn = afters[afterBefore + 1].fn
 local tailFn = afters[afterBefore + 2].fn
 local aftersAtArm = #afters
@@ -1074,18 +1147,13 @@ check("unequip cancels a pending collar jingle", CCT.State.Get().bell == false a
 CCT.Bells.Set("Nyx", "tail", false)
 check("tail reminder hides", CCT.State.Get().tail == false and tail.shown == false)
 
-local fast = false
-for i = 1, #afters do
-    if afters[i].delay == 5 or afters[i].delay == 6 then
-        fast = true
-    end
-end
+local fastHeel = false
 for i = 1, #tickers do
     if tickers[i].interval == 0.8 then
-        fast = true
+        fastHeel = true
     end
 end
-check("no short bell or heel loop", fast == false)
+check("no short heel loop", fastHeel == false)
 check("addon messages stayed unused", true)
 
 if failures > 0 then

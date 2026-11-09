@@ -26,9 +26,9 @@ local WARNING = "Kitten is Wearing High Heels you Cant Run or you will Fall !\n(
 local BASE = { maid = 3.5, high = 2.0, ballet = 1.4 }
 local DISPLAY = { maid = "Maid Heels", high = "High Heels", ballet = "Ballet Boots" }
 local SOUND_FILE = {
-    maid = "HighHeels3.wav",
-    high = "HighHeels8.wav",
-    ballet = "HighHeels12.wav",
+    maid = "HighHeels3.ogg",
+    high = "HighHeels8.ogg",
+    ballet = "HighHeels12.ogg",
 }
 local FAIL_FILE = {
     maid = "Textures\\heels\\maid-heels.tga",

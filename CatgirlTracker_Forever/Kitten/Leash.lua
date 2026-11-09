@@ -188,6 +188,12 @@ local function SpellName(id)
 end
 
 local function CaptureSlot(slot)
+    if CCT.Mittens and type(CCT.Mittens.HeldAction) == "function" then
+        local held = CCT.Mittens.HeldAction(slot)
+        if type(held) == "table" and type(held.actionType) == "string" then
+            return held
+        end
+    end
     if type(GetActionInfo) ~= "function" then
         return false
     end
@@ -225,6 +231,19 @@ local function Capture()
     end
     char.leashSlots = slots
     return true
+end
+
+local function CaptureClean()
+    if CCT.Mittens and type(CCT.Mittens.YieldBar) == "function" then
+        CCT.Mittens.YieldBar()
+    end
+    Capture()
+end
+
+local function ReleaseMittens()
+    if CCT.Mittens and type(CCT.Mittens.ResumeBar) == "function" then
+        CCT.Mittens.ResumeBar()
+    end
 end
 
 local function HaveBackup()
@@ -445,7 +464,7 @@ local function ArmFollow(target, syncOnly)
     end
     if InCombat() then
         if not syncOnly and not HaveBackup() then
-            Capture()
+            CaptureClean()
         end
         pending = "follow"
         shownTarget = nil
@@ -456,7 +475,7 @@ local function ArmFollow(target, syncOnly)
         return
     end
     if not HaveBackup() and not syncOnly then
-        Capture()
+        CaptureClean()
     end
     local macroId, body = WriteMacro(target)
     if HaveBackup() then
@@ -478,6 +497,7 @@ local function ArmStop()
     end
     ConfigureStop()
     RestoreSlots()
+    ReleaseMittens()
     pending = nil
     ClearRegen()
 end
@@ -523,6 +543,7 @@ function CCT.Leash.Recover()
         HideButton()
     end
     if not HaveBackup() then
+        ReleaseMittens()
         return
     end
     if InCombat() then
@@ -531,6 +552,7 @@ function CCT.Leash.Recover()
         return
     end
     RestoreSlots()
+    ReleaseMittens()
 end
 
 function CCT.Leash.Apply(on, sender)

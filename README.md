@@ -71,7 +71,7 @@ Nya rewrites outgoing chat. It stays off until Enable Nya is turned on in the ow
 
 ## What you hear
 
-Heel steps play only while the kitten is walking. They repeat about every seven seconds and stop when the kitten stops. The collar bell and the tail bell wait between two and five minutes, then jingle only if the kitten is walking. When the kitten stops, a jingle that is already playing stops.
+Heel steps play only while the kitten is walking. They repeat about every seven seconds and stop when the kitten stops. The collar bell waits between two and five minutes. The tail bell jingles about every five or six seconds while the kitten is walking. When the kitten stops, a jingle that is already playing stops. These clips are ogg files. A custom wav does not play.
 
 The kitten hears the sound on this computer. The Owner hears the heels only when close on the map, and hears either bell inside a wider map distance. Inside that distance the sound is full volume. Farther away, the Owner hears nothing. There is no fade.
 
@@ -107,4 +107,4 @@ There is no sync debug window. `/cctdebug` prints rate-limited lines.
 - MaidTasks, on
 - KittenMapShow, off
 
-The map stays off until you enable KittenMapShow. It draws a trail only after the kitten has sent a position.
+The map stays off until you enable KittenMapShow. The owner then sees where the kitten is, and about one point a minute of where the kitten walked for the last 30 days. The settings slider picks the day. Hover a pin for the time. Today also shows the current pin. Another day shows only that day's walk. The kitten does not see their own trail.

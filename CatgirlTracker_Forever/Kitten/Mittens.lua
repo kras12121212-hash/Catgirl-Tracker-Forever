@@ -1,5 +1,8 @@
 -- Paw mittens. The worn state is CCT.State.
 -- The cursor follows the mouse on a ticker only while the overlay is shown.
+-- One occupied slot is swapped for the paw macro, then that spell is put back.
+-- Forever does not pick the saved action id up, so restore uses the spell name.
+-- A leash pauses the swap until the bar has been restored.
 -- Action slots are edited out of combat and finished on PLAYER_REGEN_ENABLED.
 -- This file does not send addon messages.
 
@@ -35,6 +38,7 @@ local pendingRestore = nil
 local pendingSabotage = false
 local pendingWindow = false
 local saved = {}
+local yielded = false
 local lastSound = { squeak = 0, creak = 0 }
 
 local function Media(rest)
@@ -209,46 +213,175 @@ local function CancelSabotageTimers()
     CancelWindowTimer()
 end
 
+local function SpellName(id)
+    if id == nil then
+        return nil
+    end
+    if C_Spell and type(C_Spell.GetSpellName) == "function" then
+        local name = C_Spell.GetSpellName(id)
+        if type(name) == "string" and name ~= "" then
+            return name
+        end
+    end
+    if C_Spell and type(C_Spell.GetSpellInfo) == "function" then
+        local info = C_Spell.GetSpellInfo(id)
+        if type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+            return info.name
+        end
+    end
+    if type(GetSpellInfo) == "function" then
+        local info = GetSpellInfo(id)
+        if type(info) == "string" and info ~= "" then
+            return info
+        end
+        if type(info) == "table" and type(info.name) == "string" and info.name ~= "" then
+            return info.name
+        end
+    end
+    return nil
+end
+
+local function CursorHolding()
+    if type(GetCursorInfo) ~= "function" then
+        return true
+    end
+    return GetCursorInfo() ~= nil
+end
+
+local function TryPickup(fn, ...)
+    if type(fn) ~= "function" then
+        return false
+    end
+    if type(ClearCursor) == "function" then
+        ClearCursor()
+    end
+    local ok = pcall(fn, ...)
+    return ok and CursorHolding()
+end
+
+local function SpellKeys(data)
+    local keys = {}
+    local seen = {}
+    local function add(value)
+        if (type(value) ~= "number" and type(value) ~= "string") or value == "" or seen[value] then
+            return
+        end
+        seen[value] = true
+        keys[#keys + 1] = value
+    end
+    add(data.spellID)
+    add(data.id)
+    add(data.name)
+    return keys
+end
+
+local function PickupSpellbook(key)
+    if C_SpellBook == nil or type(C_SpellBook.FindSpellBookSlotForSpell) ~= "function" then
+        return false
+    end
+    if type(C_SpellBook.PickupSpellBookItem) ~= "function" then
+        return false
+    end
+    local ok, index, bank = pcall(C_SpellBook.FindSpellBookSlotForSpell, key, true, true)
+    if not ok or index == nil or bank == nil then
+        return false
+    end
+    return TryPickup(C_SpellBook.PickupSpellBookItem, index, bank)
+end
+
+local function PickupSaved(data)
+    local kind = data.actionType
+    if kind == "spell" then
+        local keys = SpellKeys(data)
+        if C_Spell and type(C_Spell.PickupSpell) == "function" then
+            for i = 1, #keys do
+                if TryPickup(C_Spell.PickupSpell, keys[i]) then
+                    return true
+                end
+            end
+        end
+        if type(PickupSpell) == "function" then
+            for i = 1, #keys do
+                if TryPickup(PickupSpell, keys[i]) then
+                    return true
+                end
+            end
+        end
+        if data.name ~= nil and type(PickupSpellBookItem) == "function" and TryPickup(PickupSpellBookItem, data.name) then
+            return true
+        end
+        for i = 1, #keys do
+            if PickupSpellbook(keys[i]) then
+                return true
+            end
+        end
+        return false
+    end
+    if kind == "macro" and type(PickupMacro) == "function" then
+        if data.name ~= nil and TryPickup(PickupMacro, data.name) then
+            return true
+        end
+        return data.id ~= nil and TryPickup(PickupMacro, data.id)
+    end
+    if kind == "item" then
+        if data.id ~= nil and C_Item and type(C_Item.PickupItem) == "function" and TryPickup(C_Item.PickupItem, data.id) then
+            return true
+        end
+        return data.id ~= nil and type(PickupItem) == "function" and TryPickup(PickupItem, data.id)
+    end
+    return false
+end
+
 local function PerformRestore(slot)
     local data = saved[slot]
     if not data then
-        return
+        return true
     end
     local function finish()
         if type(ClearCursor) == "function" then
             ClearCursor()
         end
     end
-    if data.had then
+    if data.had ~= true then
         local ok = pcall(function()
-            if data.actionType == "spell" and data.id ~= nil and type(PickupSpell) == "function" then
-                PickupSpell(data.id)
-            elseif data.actionType == "macro" and data.id ~= nil and type(PickupMacro) == "function" then
-                PickupMacro(data.id)
-            elseif data.actionType == "item" and data.id ~= nil and type(PickupItem) == "function" then
-                PickupItem(data.id)
-            else
-                saved[slot] = nil
-                finish()
-                return
-            end
-            if type(PlaceAction) == "function" then
-                PlaceAction(slot)
-            end
-            finish()
-        end)
-        if not ok then
-            pcall(finish)
-        end
-    else
-        pcall(function()
             if type(PickupAction) == "function" then
                 PickupAction(slot)
             end
             finish()
         end)
+        if not ok then
+            pcall(finish)
+            return false
+        end
+        saved[slot] = nil
+        return true
+    end
+    if data.actionType ~= "spell" and data.actionType ~= "macro" and data.actionType ~= "item" then
+        finish()
+        saved[slot] = nil
+        return true
+    end
+    local placed = false
+    local ok = pcall(function()
+        if not PickupSaved(data) then
+            finish()
+            return
+        end
+        if type(PlaceAction) == "function" then
+            PlaceAction(slot)
+        end
+        finish()
+        placed = true
+    end)
+    if not ok then
+        pcall(finish)
+        return false
+    end
+    if not placed then
+        return false
     end
     saved[slot] = nil
+    return true
 end
 
 local function Restore(slot)
@@ -260,8 +393,7 @@ local function Restore(slot)
         return false
     end
     pendingRestore = nil
-    PerformRestore(slot)
-    return true
+    return PerformRestore(slot) == true
 end
 
 local function MacroBody()
@@ -306,17 +438,29 @@ local function Capture(slot)
         saved[slot] = { had = false }
         return
     end
-    local actionType, id, subType = GetActionInfo(slot)
-    if actionType then
-        saved[slot] = {
-            had = true,
-            actionType = actionType,
-            id = id,
-            subType = subType,
-        }
+    local actionType, id, subType, spellID = GetActionInfo(slot)
+    if not actionType then
+        saved[slot] = { had = false }
         return
     end
-    saved[slot] = { had = false }
+    local row = {
+        had = true,
+        actionType = actionType,
+        id = id,
+        subType = subType,
+    }
+    if spellID ~= nil and spellID ~= id then
+        row.spellID = spellID
+    end
+    if actionType == "spell" then
+        row.name = SpellName(spellID or id)
+    elseif actionType == "macro" and type(GetActionText) == "function" then
+        local text = GetActionText(slot)
+        if type(text) == "string" and text ~= "" then
+            row.name = text
+        end
+    end
+    saved[slot] = row
 end
 
 local function Place(slot, macroIndex)
@@ -379,7 +523,52 @@ local function ChooseSlot(previous)
     return slot or list[1]
 end
 
+local function Leashed()
+    local state = CCT.State and CCT.State.Get and CCT.State.Get()
+    return type(state) == "table" and state.leash == true
+end
+
+function CCT.Mittens.HeldAction(slot)
+    if slot ~= currentSlot then
+        return nil
+    end
+    local data = saved[slot]
+    if type(data) ~= "table" or data.had ~= true or type(data.actionType) ~= "string" then
+        return nil
+    end
+    local row = {
+        actionType = data.actionType,
+        id = data.id,
+        subType = data.subType,
+    }
+    if data.spellID ~= nil then
+        row.spellID = data.spellID
+    end
+    if type(data.name) == "string" and data.name ~= "" then
+        row.name = data.name
+    end
+    return row
+end
+
+function CCT.Mittens.YieldBar()
+    yielded = true
+    CancelSabotageTimers()
+    pendingSabotage = false
+    pendingWindow = false
+    pendingRestore = nil
+    windowActive = false
+    if InCombat() or not currentSlot then
+        return
+    end
+    if Restore(currentSlot) then
+        currentSlot = nil
+    end
+end
+
 local function SabotageTick()
+    if yielded then
+        return
+    end
     if CCT.Mittens.Mode(Worn()) == "off" then
         return
     end
@@ -474,6 +663,20 @@ local function StartWindowMode()
     end
 end
 
+function CCT.Mittens.ResumeBar()
+    yielded = false
+    local nextMode = CCT.Mittens.Mode(Worn())
+    if nextMode == "off" then
+        return
+    end
+    mode = nextMode
+    if nextMode == "continuous" then
+        StartContinuous()
+    elseif nextMode == "window" then
+        StartWindowMode()
+    end
+end
+
 local function StopSabotage()
     CancelSabotageTimers()
     windowActive = false
@@ -493,6 +696,15 @@ local function ApplyWorn(mittens)
         return
     end
     ShowCursor(mittens)
+    if yielded or Leashed() then
+        yielded = true
+        CancelSabotageTimers()
+        windowActive = false
+        pendingWindow = false
+        pendingSabotage = false
+        mode = nextMode
+        return
+    end
     if nextMode == mode then
         return
     end
@@ -510,15 +722,17 @@ local function Sync()
 end
 
 local function FinishCombat()
-    if pendingRestore then
+    if pendingRestore and not yielded then
         local slot = pendingRestore
         pendingRestore = nil
-        PerformRestore(slot)
-        if slot == currentSlot then
+        if PerformRestore(slot) and slot == currentSlot then
             currentSlot = nil
         end
     end
     local mittens = Worn()
+    if yielded then
+        return
+    end
     if pendingWindow and mittens == "squeaking" then
         pendingWindow = false
         BeginWindow()
@@ -533,9 +747,9 @@ end
 
 local function SoundPath(kind)
     if kind == "squeak" then
-        return Media("Sounds\\pawsqueak" .. math.random(5) .. ".wav")
+        return Media("Sounds\\pawsqueak" .. math.random(5) .. ".ogg")
     end
-    return Media("Sounds\\creak-" .. math.random(3) .. ".wav")
+    return Media("Sounds\\creak-" .. math.random(3) .. ".ogg")
 end
 
 function CCT.Mittens.OnSpell()

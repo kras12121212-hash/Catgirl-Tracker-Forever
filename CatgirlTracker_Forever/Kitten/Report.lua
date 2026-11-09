@@ -1,5 +1,8 @@
 -- Kitten reports. State, Pos, Ack, and Prox leave through CCT.Net.
 -- Jewel samples call CCT.State.SetPos. This file does not move other feature state.
+-- The live pin updates every 20 seconds. Walk history is one point about every
+-- minute, plus a point when the map changes, kept for 30 days.
+-- Unsent history rides along in Pos and catches up after the owner was offline.
 -- Ledger bodies are not built here. OwnerWeek is not sent.
 
 local ADDON_NAME, CCT = ...
@@ -10,8 +13,9 @@ local HEEL_RANGE = 0.005
 local NEAR_RANGE = 0.02
 local HEAT_GAP = 10
 local SAMPLE_GAP = 20
-local TRAIL_SECONDS = 3600
-local TRAIL_CAP = 100
+local HISTORY_GAP = 60
+local TRAIL_SECONDS = 30 * 24 * 60 * 60
+local TRAIL_CAP = 45000
 local PING_GAP = 1
 
 local loginArmed = false
@@ -25,13 +29,14 @@ local heatDueAt = nil
 local lastHeatSentAt = 0
 local nextSampleAt = nil
 local pendingOwner = nil
+local trailQueued = nil
 local lastPing = { maid = 0, high = 0, ballet = 0 }
 local proxHandles = {}
 
 local HEEL_FILE = {
-    maid = "HighHeels3.wav",
-    high = "HighHeels8.wav",
-    ballet = "HighHeels12.wav",
+    maid = "HighHeels3.ogg",
+    high = "HighHeels8.ogg",
+    ballet = "HighHeels12.ogg",
 }
 local BELL_FILE = {
     bell = "Bell.ogg",
@@ -43,6 +48,24 @@ local function Clock()
         return CCT.Net.Clock()
     end
     return CCT.UnixNow()
+end
+
+-- Net.Clock is seconds since the client started. A saved walk time has to be time().
+local UNIX_FLOOR = 1000000000
+
+local function Wall(now)
+    local stamp = tonumber(now)
+    if stamp ~= nil and stamp >= UNIX_FLOOR then
+        return math.floor(stamp)
+    end
+    local unix = tonumber(CCT.UnixNow and CCT.UnixNow())
+    if unix ~= nil and unix >= UNIX_FLOOR then
+        return math.floor(unix)
+    end
+    if stamp ~= nil then
+        return math.floor(stamp)
+    end
+    return math.floor(unix or 0)
 end
 
 local function OwnerShort()
@@ -168,36 +191,149 @@ local function StopHandle(key)
     end
 end
 
+local function KittenChar()
+    local short = CCT.Player and CCT.Player.short
+    if type(short) ~= "string" or short == "" or CCT.Saved == nil or type(CCT.Saved.EnsureChar) ~= "function" then
+        return nil
+    end
+    return CCT.Saved.EnsureChar(short)
+end
+
+local function TrailSent(char)
+    local sent = char and tonumber(char.trailSent) or 0
+    if sent < 0 then
+        sent = 0
+    end
+    return sent
+end
+
+local function TrailFresh(stamp, at)
+    return (stamp - at) <= TRAIL_SECONDS and (at - stamp) <= TRAIL_SECONDS
+end
+
 function CCT.Report.AppendTrail(list, point, now)
     if type(list) ~= "table" or type(point) ~= "table" then
         return list
     end
     local stamp = tonumber(now) or tonumber(point.t) or Clock()
-    local kept = {}
-    for i = 1, #list do
-        local row = list[i]
-        local at = type(row) == "table" and tonumber(row.t) or nil
-        if at ~= nil and (stamp - at) <= TRAIL_SECONDS then
-            kept[#kept + 1] = row
+    local at = math.floor(tonumber(point.t) or stamp)
+    local mapID = tonumber(point.mapID)
+    local x = tonumber(point.x)
+    local y = tonumber(point.y)
+    if mapID == nil or x == nil or y == nil then
+        return list
+    end
+    local fresh = TrailFresh(stamp, at)
+    local function prune()
+        local guard = 0
+        while #list > 0 and guard < 100000 do
+            guard = guard + 1
+            local rowAt = type(list[1]) == "table" and tonumber(list[1].t) or nil
+            local tooOld = rowAt == nil or not TrailFresh(stamp, rowAt)
+            if tooOld or #list > TRAIL_CAP then
+                table.remove(list, 1)
+            else
+                break
+            end
         end
     end
+    local lastRow = list[#list]
+    local lastAt = type(lastRow) == "table" and tonumber(lastRow.t) or nil
+    if fresh and (lastAt == nil or at > lastAt) then
+        list[#list + 1] = {
+            mapID = mapID,
+            x = x,
+            y = y,
+            instanceID = type(point.instanceID) == "number" and point.instanceID or nil,
+            t = at,
+        }
+        prune()
+        return list
+    end
     for i = #list, 1, -1 do
-        list[i] = nil
+        local row = list[i]
+        if type(row) == "table" and tonumber(row.t) == at then
+            if fresh then
+                row.mapID = mapID
+                row.x = x
+                row.y = y
+                row.t = at
+                if type(point.instanceID) == "number" then
+                    row.instanceID = point.instanceID
+                end
+            else
+                table.remove(list, i)
+            end
+            prune()
+            return list
+        end
     end
-    for i = 1, #kept do
-        list[i] = kept[i]
+    if fresh then
+        local row = {
+            mapID = mapID,
+            x = x,
+            y = y,
+            instanceID = type(point.instanceID) == "number" and point.instanceID or nil,
+            t = at,
+        }
+        local lastAt = type(list[#list]) == "table" and tonumber(list[#list].t) or nil
+        if lastAt == nil or at > lastAt then
+            list[#list + 1] = row
+        else
+            local placed = false
+            for i = 1, #list do
+                local rowAt = type(list[i]) == "table" and tonumber(list[i].t) or 0
+                if at < rowAt then
+                    table.insert(list, i, row)
+                    placed = true
+                    break
+                end
+            end
+            if not placed then
+                list[#list + 1] = row
+            end
+        end
     end
-    list[#list + 1] = {
+    prune()
+    return list
+end
+
+function CCT.Report.NoteHistory(point)
+    local state = State()
+    if type(state) ~= "table" or state.jewel ~= true or type(point) ~= "table" then
+        return false
+    end
+    if tonumber(point.mapID) == nil or tonumber(point.x) == nil or tonumber(point.y) == nil then
+        return false
+    end
+    local char = KittenChar()
+    if type(char) ~= "table" then
+        return false
+    end
+    char.trail = char.trail or {}
+    local trail = char.trail
+    local last = trail[#trail]
+    local stamp = math.floor(tonumber(point.t) or Clock())
+    local lastAt = type(last) == "table" and tonumber(last.t) or nil
+    local mapChanged = type(last) == "table" and tonumber(last.mapID) ~= tonumber(point.mapID)
+    if lastAt ~= nil and not mapChanged and (stamp - lastAt) < HISTORY_GAP then
+        return false
+    end
+    if lastAt ~= nil and stamp <= lastAt then
+        stamp = math.floor(lastAt) + 1
+    end
+    local sent = TrailSent(char)
+    if stamp <= sent then
+        stamp = sent + 1
+    end
+    CCT.Report.AppendTrail(trail, {
         mapID = point.mapID,
         x = point.x,
         y = point.y,
         instanceID = point.instanceID,
-        t = tonumber(point.t) or stamp,
-    }
-    while #list > TRAIL_CAP do
-        table.remove(list, 1)
-    end
-    return list
+        t = stamp,
+    }, stamp)
+    return true
 end
 
 local function ShownHeat(state)
@@ -429,7 +565,18 @@ function CCT.Report.StateFields(state)
     return fields
 end
 
-function CCT.Report.PosFields(pos)
+local function HistoryToken(point)
+    local mapID = tonumber(point and point.mapID)
+    local x = tonumber(point and point.x)
+    local y = tonumber(point and point.y)
+    local stamp = tonumber(point and point.t)
+    if mapID == nil or x == nil or y == nil or stamp == nil then
+        return nil
+    end
+    return string.format("%d:%.4f:%.4f:%d", math.floor(mapID), x, y, math.floor(stamp))
+end
+
+function CCT.Report.PosFields(pos, history)
     local fields = {}
     if type(pos) ~= "table" then
         return fields
@@ -445,7 +592,122 @@ function CCT.Report.PosFields(pos)
         Add(fields, "inst", pos.instanceID)
     end
     Add(fields, "t", pos.t or Clock())
+    if type(history) == "table" then
+        for i = 1, #history do
+            local token = HistoryToken(history[i])
+            if token ~= nil then
+                Add(fields, "h", token)
+            end
+        end
+    end
     return fields
+end
+
+local function PendingHistory(char)
+    local sent = TrailSent(char)
+    local trail = char and char.trail or {}
+    local rows = {}
+    for i = 1, #trail do
+        local row = trail[i]
+        local at = type(row) == "table" and tonumber(row.t) or nil
+        if at ~= nil and at > sent then
+            rows[#rows + 1] = row
+        end
+    end
+    table.sort(rows, function(a, b)
+        return (tonumber(a.t) or 0) < (tonumber(b.t) or 0)
+    end)
+    return rows
+end
+
+local function HistoryFits(pos, rows)
+    if CCT.Net == nil or type(CCT.Net.Pieces) ~= "function" then
+        return false
+    end
+    local parts = CCT.Net.Pieces("pos", CCT.Report.PosFields(pos, rows))
+    return type(parts) == "table" and #parts == 1
+end
+
+local function FitHistory(pos, rows)
+    local chosen = {}
+    if not HistoryFits(pos, chosen) then
+        return chosen
+    end
+    for i = 1, #rows do
+        chosen[#chosen + 1] = rows[i]
+        if not HistoryFits(pos, chosen) then
+            chosen[#chosen] = nil
+            break
+        end
+    end
+    return chosen
+end
+
+local function HasUnacked(char)
+    if type(char) ~= "table" or type(char.trail) ~= "table" then
+        return false
+    end
+    local last = char.trail[#char.trail]
+    local at = type(last) == "table" and tonumber(last.t) or nil
+    return at ~= nil and at > TrailSent(char)
+end
+
+function CCT.Report.FlushTrail(forceLive)
+    if trailQueued ~= nil then
+        return true
+    end
+    local owner = OwnerShort()
+    local state = State()
+    if owner == nil or CCT.Net == nil or type(CCT.Net.Whisper) ~= "function" then
+        return false
+    end
+    if type(state) ~= "table" or type(state.pos) ~= "table" then
+        return false
+    end
+    local char = KittenChar()
+    local pending = PendingHistory(char)
+    if forceLive ~= true and #pending == 0 then
+        return false
+    end
+    if #pending > 0 and not HistoryFits(state.pos, {}) then
+        return false
+    end
+    local batch = FitHistory(state.pos, pending)
+    if #pending > 0 and #batch == 0 then
+        return false
+    end
+    local ackThrough = nil
+    if #batch > 0 then
+        ackThrough = tonumber(batch[#batch].t)
+    end
+    local fields = CCT.Report.PosFields(state.pos, batch)
+    if ackThrough == nil then
+        return CCT.Net.Whisper(owner, "pos", fields) and true or false
+    end
+    local function done(ok)
+        if trailQueued ~= ackThrough then
+            return
+        end
+        trailQueued = nil
+        if ok ~= true then
+            return
+        end
+        local saved = KittenChar()
+        if type(saved) == "table" then
+            local previous = tonumber(saved.trailSent) or 0
+            if ackThrough > previous then
+                saved.trailSent = ackThrough
+            end
+        end
+        CCT.Report.FlushTrail(false)
+    end
+    trailQueued = ackThrough
+    local queued = CCT.Net.Whisper(owner, "pos", fields, done) and true or false
+    if not queued then
+        trailQueued = nil
+        return false
+    end
+    return true
 end
 
 function CCT.Report.SendState()
@@ -458,12 +720,7 @@ function CCT.Report.SendState()
 end
 
 function CCT.Report.SendPos()
-    local owner = OwnerShort()
-    local state = State()
-    if owner == nil or type(state) ~= "table" or type(state.pos) ~= "table" or CCT.Net == nil then
-        return false
-    end
-    return CCT.Net.Whisper(owner, "pos", CCT.Report.PosFields(state.pos)) and true or false
+    return CCT.Report.FlushTrail(true)
 end
 
 local function RememberBaseline(state)
@@ -545,17 +802,12 @@ function CCT.Report.SamplePos(now)
     if type(here) ~= "table" or type(here.mapID) ~= "number" or type(here.x) ~= "number" or type(here.y) ~= "number" then
         return false
     end
-    here.t = tonumber(now) or here.t or Clock()
+    here.t = Wall(now)
     if not (CCT.State and CCT.State.SetPos and CCT.State.SetPos(here)) then
         return false
     end
-    local short = CCT.Player and CCT.Player.short
-    if short and CCT.Saved and CCT.Saved.EnsureChar then
-        local char = CCT.Saved.EnsureChar(short)
-        if type(char) == "table" then
-            char.trail = char.trail or {}
-            CCT.Report.AppendTrail(char.trail, here, here.t)
-        end
+    if CCT.Report.NoteHistory(here) then
+        CCT.Report.FlushTrail(false)
     end
     return true
 end
@@ -578,6 +830,10 @@ function CCT.Report.Tick(now)
             nextSampleAt = stamp + SAMPLE_GAP
             CCT.Report.SamplePos(stamp)
         end
+    end
+    local char = KittenChar()
+    if char ~= nil and trailQueued == nil and HasUnacked(char) then
+        CCT.Report.FlushTrail(false)
     end
     if CCT.Pictures and type(CCT.Pictures.Tick) == "function" then
         CCT.Pictures.Tick(stamp)
@@ -898,10 +1154,10 @@ local function PlayKind(kind, heel)
         return PlayFile(Media("Sounds\\sbell4seconds.ogg"))
     end
     if kind == "squeak" then
-        return PlayFile(Media("Sounds\\pawsqueak" .. math.random(5) .. ".wav"))
+        return PlayFile(Media("Sounds\\pawsqueak" .. math.random(5) .. ".ogg"))
     end
     if kind == "creak" then
-        return PlayFile(Media("Sounds\\creak-" .. math.random(3) .. ".wav"))
+        return PlayFile(Media("Sounds\\creak-" .. math.random(3) .. ".ogg"))
     end
     if kind == "heel" then
         local file = HEEL_FILE[heel or ""]
@@ -1034,6 +1290,7 @@ function CCT.Report.Reset()
     lastHeatSentAt = 0
     nextSampleAt = nil
     pendingOwner = nil
+    trailQueued = nil
     lastPing = { maid = 0, high = 0, ballet = 0 }
     RememberBaseline(State())
 end

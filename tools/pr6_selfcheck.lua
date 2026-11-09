@@ -533,6 +533,18 @@ check("gag popup hides after five seconds", CCT.Pictures.Current() == nil)
 local afterOn = #pics
 CCT.State.SetGag("none")
 check("removal does not pop", #CCT.Saved.EnsureChar("Kitten").pictures == afterOn)
+CCT.State.SetGag("huge")
+CCT.State.SetLock("gag", 90)
+local timed = CCT.State.Get()
+timed.locks.gag.unlockAt = time() + (90 * 60) + 30
+check("bind icons leave a gap", CCT.Pictures.IconStep() == 48)
+check("kitten gag icon shows the minutes left", CCT.Pictures.Times(timed)[1] == "1h30m")
+timed.locks.gag.unlockAt = time() + 40
+local secondsLabel = CCT.Pictures.Times(timed)[1]
+local secondsLeft = tonumber(type(secondsLabel) == "string" and secondsLabel:match("^(%d+)s$") or nil)
+check("kitten gag icon counts the last seconds", secondsLeft ~= nil and secondsLeft >= 30 and secondsLeft <= 40)
+CCT.State.SetLock("gag", nil)
+CCT.State.SetGag("none")
 for i = 1, 40 do
     CCT.Pictures.Note("icon-" .. i, 6000 + i)
 end
@@ -547,13 +559,110 @@ ownerRow.state = { rev = 1, pos = { mapID = 12, x = 0.2, y = 0.3, t = 7000 }, je
 ownerRow.trail = {}
 CCT.Report.AppendTrail(ownerRow.trail, { mapID = 12, x = 0.2, y = 0.3, t = 7000 }, 7000)
 check("map draws the received pos", #CCT.Map.Points(12) >= 1 and #CCT.Map.Points(99) == 0)
-local trail = {}
-for i = 1, 101 do
-    CCT.Report.AppendTrail(trail, { mapID = 1, x = 0.1, y = 0.1, t = 8000 + i }, 8101)
+local noon = os.date("*t")
+noon.hour = 12
+noon.min = 0
+noon.sec = 0
+local yday = os.date("*t", os.time(noon) - (24 * 60 * 60))
+yday.hour = 15
+yday.min = 30
+yday.sec = 0
+local yesterday = os.time(yday)
+ownerRow.trail = {}
+ownerRow.state.pos = { mapID = 12, x = 0.2, y = 0.3, t = os.time() }
+CCT.Report.AppendTrail(ownerRow.trail, { mapID = 12, x = 0.4, y = 0.6, t = yesterday }, os.time())
+CCT.Report.AppendTrail(ownerRow.trail, { mapID = 12, x = 0.4, y = 0.6, t = yesterday + 600 }, os.time())
+CCT.Report.AppendTrail(ownerRow.trail, { mapID = 40, x = 0.5, y = 0.5, t = yesterday + 1200 }, os.time())
+CCT.Map.SetHistoryOffset(1)
+local yPoints = CCT.Map.Points(12)
+check("map history day shows that day", #yPoints == 2 and yPoints[1].mapID == 12)
+check("map history day hides a different map", #CCT.Map.Points(40) == 1 and CCT.Map.Points(40)[1].mapID == 40)
+local collapsed = CCT.Map.Grouped(yPoints)
+local when = CCT.Map.When(collapsed[1])
+check(
+    "same spot collapses to a time range",
+    #collapsed == 1 and type(when) == "string" and when:find(os.date("%Y-%m-%d", yesterday), 1, true) ~= nil and when:find(" to ", 1, true) ~= nil
+)
+CCT.Map.SetHistoryOffset(0)
+check("today keeps the current pin", #CCT.Map.Points(12) >= 1 and #CCT.Map.Points(40) == 0)
+local pinX, pinY = CCT.Map.PinOffset(0.25, 0.5, 1000, 800)
+check("map pin sits on the canvas", pinX == 250 and pinY == -400)
+local oldCreate = CreateFrame
+local made = {}
+CreateFrame = function(...)
+    local frame = oldCreate(...)
+    made[#made + 1] = frame
+    frame.SetPoint = function(self, ...)
+        self.point = { ... }
+    end
+    frame.GetWidth = function()
+        return 1000
+    end
+    frame.GetHeight = function()
+        return 800
+    end
+    frame.GetFrameLevel = function()
+        return 2
+    end
+    return frame
 end
-check("trail caps at 100", #trail == 100)
-CCT.Report.AppendTrail(trail, { mapID = 1, x = 0.1, y = 0.1, t = 100 }, 8000 + 3601)
-check("trail drops an hour old point", trail[1].t ~= 100)
+WorldMapFrame = {
+    shown = true,
+    scripts = {},
+    mapID = 12,
+}
+function WorldMapFrame:IsShown()
+    return self.shown == true
+end
+function WorldMapFrame:GetMapID()
+    return self.mapID
+end
+function WorldMapFrame:GetWidth()
+    return 1000
+end
+function WorldMapFrame:GetHeight()
+    return 800
+end
+function WorldMapFrame:GetFrameLevel()
+    return 1
+end
+function WorldMapFrame:HookScript(event, fn)
+    self.scripts[event] = fn
+end
+check("map hooks the world map", CCT.Map.Hook() == true and type(WorldMapFrame.scripts.OnShow) == "function")
+local drawn = CCT.Map.Refresh()
+local placed = nil
+for i = 1, #made do
+    local point = made[i].point
+    if type(point) == "table" and point[1] == "CENTER" and point[3] == "TOPLEFT" then
+        placed = point
+    end
+end
+check(
+    "open map places the kitten pin",
+    drawn >= 1
+        and placed ~= nil
+        and math.abs(placed[4] - 200) < 1
+        and math.abs(placed[5] + 240) < 1
+)
+CreateFrame = oldCreate
+WorldMapFrame = nil
+local trail = {}
+local trailNow = 1700000000
+local keepSeconds = 30 * 24 * 60 * 60
+CCT.Report.AppendTrail(trail, { mapID = 1, x = 0.1, y = 0.1, t = trailNow - keepSeconds - 5 }, trailNow)
+check("trail drops a point older than 30 days", #trail == 0)
+local keptAt = trailNow - keepSeconds + 60
+CCT.Report.AppendTrail(trail, { mapID = 1, x = 0.2, y = 0.2, t = keptAt }, trailNow)
+check("trail keeps a point inside 30 days", #trail == 1 and trail[1].t == keptAt)
+CCT.Report.AppendTrail(trail, { mapID = 1, x = 0.8, y = 0.8, t = keptAt }, trailNow)
+check("trail dedupes the same timestamp", #trail == 1 and trail[1].x == 0.8)
+local capped = {}
+local cap = 45000
+for i = 1, cap + 1 do
+    CCT.Report.AppendTrail(capped, { mapID = 1, x = 0.1, y = 0.1, t = trailNow - cap - 1 + i }, trailNow)
+end
+check("trail caps at 45000", #capped == cap and capped[1].t == trailNow - cap + 1 and capped[#capped].t == trailNow)
 
 local secret = {}
 issecretvalue = function(value)
@@ -582,6 +691,100 @@ end
 CCT.Net.Reset()
 clear(sends)
 check("sample writes through setpos", CCT.Report.SamplePos(9100) == true and CCT.State.Get().pos.x == 0.25)
+
+CCT.Report.Reset()
+CCT.Net.Reset()
+clear(sends)
+addonResult = 0
+online = true
+CCT.Net.Clock(20000)
+CCT.State.SetJewel(true)
+local walked = CCT.Saved.EnsureChar("Kitten")
+walked.trail = {}
+walked.trailSent = nil
+C_Map.GetBestMapForUnit = function()
+    return 12
+end
+C_Map.GetPlayerMapPosition = function()
+    return { x = 0.25, y = 0.75 }
+end
+local beforeWall = os.time()
+check(
+    "session clock is stored as the calendar time",
+    CCT.Report.SamplePos(59460) == true
+        and #walked.trail == 1
+        and walked.trail[1].t >= beforeWall
+        and walked.trail[1].t <= os.time()
+)
+local sessionLabel = CCT.Map.When({ t = 59460 })
+check(
+    "a session stamp does not read as 1970",
+    type(sessionLabel) == "string" and sessionLabel:find("1970", 1, true) == nil and sessionLabel:find(os.date("%Y-%m-%d"), 1, true) ~= nil
+)
+local wall = os.time() - 7200
+walked.trail = {}
+walked.trailSent = nil
+check("jewel sample records the first walk point", CCT.Report.SamplePos(wall) == true and #walked.trail == 1 and walked.trail[1].t == wall)
+check("a sample inside one minute does not add history", CCT.Report.SamplePos(wall + 40) == true and #walked.trail == 1)
+C_Map.GetBestMapForUnit = function()
+    return 40
+end
+check("a map change records immediately", CCT.Report.SamplePos(wall + 400) == true and #walked.trail == 2 and walked.trail[2].mapID == 40)
+check("the same map still waits one minute", CCT.Report.SamplePos(wall + 440) == true and #walked.trail == 2)
+check("one minute records the next point", CCT.Report.SamplePos(wall + 400 + 60) == true and #walked.trail == 3)
+CCT.Report.Reset()
+CCT.Net.Reset()
+clear(sends)
+addonResult = 0
+online = true
+local base = os.time() - (10 * 24 * 60 * 60)
+walked.trail = {}
+walked.trailSent = nil
+for i = 1, 20 do
+    walked.trail[i] = { mapID = 12, x = 0.1 + (i * 0.01), y = 0.2, t = base + (i * 300) }
+end
+CCT.State.SetPos({ mapID = 12, x = 0.5, y = 0.5, instanceID = 9, t = base + 99999 })
+check("history flush queues one pos", CCT.Report.FlushTrail(true) == true and CCT.Net.Depth().snapshot == 1)
+CCT.Net.Pump()
+local firstWire = sends[#sends] and sends[#sends].message or ""
+local parsedHistory = CCT.Net.Parse(firstWire)
+local sentCount = parsedHistory and parsedHistory.many and parsedHistory.many.h and #parsedHistory.many.h or 0
+local sentThrough = sentCount > 0 and parsedHistory.many.h[sentCount].t or nil
+check(
+    "history batch fits in one whisper",
+    sentCount >= 2 and sentCount < 20 and #firstWire <= 255 and firstWire:find("part:", 1, true) == nil and walked.trailSent == sentThrough
+)
+check("the rest of the walk stays queued", CCT.Net.Depth().snapshot == 1 and walked.trailSent < walked.trail[#walked.trail].t)
+local ownerKitten = CCT.db.owner.kitten.Kitten or { state = {}, trail = {} }
+CCT.db.owner.kitten.Kitten = ownerKitten
+ownerKitten.trail = {}
+ownerKitten.state = ownerKitten.state or {}
+CCT.Net.Receive(CCT.PREFIX, firstWire, "WHISPER", "Kitten")
+check("owner stores the walked points", #ownerKitten.trail == sentCount)
+check("owner does not store the live sample as history", ownerKitten.state.pos ~= nil and ownerKitten.state.pos.t == base + 99999)
+local stored = #ownerKitten.trail
+CCT.Net.Receive(CCT.PREFIX, firstWire, "WHISPER", "Kitten")
+check("owner keeps one row per time", #ownerKitten.trail == stored)
+local acked = walked.trailSent
+addonResult = 12
+local offlineSends = #sends
+CCT.Net.Pump()
+check("offline owner does not ack the next walk batch", walked.trailSent == acked and CCT.Net.Depth().snapshot == 1 and #sends == offlineSends + 1)
+addonResult = 0
+online = true
+CCT.Net.OnEvent(nil, "GUILD_ROSTER_UPDATE")
+check("owner return continues the walk history", walked.trailSent ~= nil and walked.trailSent > acked)
+CCT.Report.Reset()
+CCT.Net.Reset()
+clear(sends)
+addonResult = 0
+online = true
+C_Map.GetBestMapForUnit = function()
+    return 12
+end
+C_Map.GetPlayerMapPosition = function()
+    return { x = 0.25, y = 0.75 }
+end
 
 CCT.Report.Reset()
 CCT.Report.Arm()

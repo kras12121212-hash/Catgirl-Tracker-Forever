@@ -116,6 +116,9 @@ function CCT.Module.Set(name, enabled)
     end
     CCT.db.settings.modules[name] = enabled and true or false
     CCT.db.settings.modules.LayerInvite = nil
+    if name == "KittenMapShow" and CCT.Map and type(CCT.Map.Refresh) == "function" then
+        CCT.Map.Refresh()
+    end
     return true
 end
 

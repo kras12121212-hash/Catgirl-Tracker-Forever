@@ -393,11 +393,31 @@ function CCT.Corroboration.ApplyPos(sender, parsed)
         row.state = {}
     end
     row.state.pos = point
-    if CCT.Report and CCT.Report.AppendTrail then
-        CCT.Report.AppendTrail(row.trail, point, point.t)
+    row.trail = row.trail or {}
+    local history = parsed.many and parsed.many.h
+    if type(history) == "table" and CCT.Report and CCT.Report.AppendTrail then
+        local now = CCT.UnixNow()
+        for i = 1, #history do
+            local item = history[i]
+            local mapID = type(item) == "table" and tonumber(item.mapID) or nil
+            local hx = type(item) == "table" and tonumber(item.x) or nil
+            local hy = type(item) == "table" and tonumber(item.y) or nil
+            local stamp = type(item) == "table" and tonumber(item.t) or nil
+            if mapID ~= nil and hx ~= nil and hy ~= nil and stamp ~= nil then
+                CCT.Report.AppendTrail(row.trail, {
+                    mapID = mapID,
+                    x = hx,
+                    y = hy,
+                    t = math.floor(stamp),
+                }, now)
+            end
+        end
     end
     if CCT.Control and type(CCT.Control.Refresh) == "function" then
         CCT.Control.Refresh()
+    end
+    if CCT.Map and type(CCT.Map.Refresh) == "function" then
+        CCT.Map.Refresh()
     end
     return true
 end

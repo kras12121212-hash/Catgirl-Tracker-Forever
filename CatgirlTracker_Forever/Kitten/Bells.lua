@@ -1,5 +1,5 @@
 -- Collar and tail bells. Worn flags go through CCT.State.
--- A jingle waits math.random(120, 300) seconds.
+-- The collar waits math.random(120, 300) seconds. The tail waits math.random(5, 6).
 -- A hidden movement sample does not start a jingle and does not stop one.
 -- A non-secret sample that is not moving skips the jingle and stops one that is playing.
 -- This file does not send addon messages.
@@ -10,11 +10,15 @@ CCT.Bells = {}
 
 local MIN_WAIT = 120
 local MAX_WAIT = 300
+local TAIL_MIN_WAIT = 5
+local TAIL_MAX_WAIT = 6
 local WATCH_INTERVAL = 0.1
 local WATCH_SECONDS = 6
 
 CCT.Bells.MIN_WAIT = MIN_WAIT
 CCT.Bells.MAX_WAIT = MAX_WAIT
+CCT.Bells.TAIL_MIN_WAIT = TAIL_MIN_WAIT
+CCT.Bells.TAIL_MAX_WAIT = TAIL_MAX_WAIT
 CCT.Bells.WATCH_INTERVAL = WATCH_INTERVAL
 CCT.Bells.WATCH_SECONDS = WATCH_SECONDS
 
@@ -46,8 +50,11 @@ local function Now()
     return 0
 end
 
-function CCT.Bells.Delay()
-    return math.random(120, 300)
+function CCT.Bells.Delay(which)
+    if which == "tail" then
+        return math.random(TAIL_MIN_WAIT, TAIL_MAX_WAIT)
+    end
+    return math.random(MIN_WAIT, MAX_WAIT)
 end
 
 function CCT.Bells.React(sample)
@@ -171,7 +178,7 @@ local function Arm(which)
     if not C_Timer or type(C_Timer.After) ~= "function" then
         return
     end
-    C_Timer.After(CCT.Bells.Delay(), function()
+    C_Timer.After(CCT.Bells.Delay(which), function()
         if gen ~= generation[which] or not Worn(which) then
             return
         end

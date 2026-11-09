@@ -1,6 +1,7 @@
 -- Pictures from current state. A popup lasts 5 seconds. Removal does not pop.
 -- The popup hides itself. It does not wait on the net pump.
 -- The binds strip is derived, not a growing log. The ring holds 30 entries.
+-- A timed bind shows the minutes left under its icon. The icons have a gap.
 -- This file does not send addon messages.
 
 local ADDON_NAME, CCT = ...
@@ -10,6 +11,8 @@ CCT.Pictures = {}
 local POPUP_SIZE = 232
 local DISCIPLINE_SIZE = 64
 local BIND_SIZE = 40
+local BIND_GAP = 8
+local LABEL_HEIGHT = 14
 local SHOW_SECONDS = 5
 local RING_CAP = 30
 
@@ -20,6 +23,7 @@ local baseline = nil
 local listening = false
 local showing = nil
 local hideAt = nil
+local countdown = nil
 
 local function Clock(passed)
     if type(GetTime) == "function" then
@@ -51,83 +55,147 @@ local function ToyIcon(id)
     return nil
 end
 
-local function CollectIcons(state)
-    local icons = {}
+local function CollectRows(state)
+    local rows = {}
     if type(state) ~= "table" then
-        return icons
+        return rows
     end
-    local function add(fileName)
+    local function add(fileName, bind)
         local path = Icon(fileName)
         if path then
-            icons[#icons + 1] = path
+            rows[#rows + 1] = { icon = path, bind = bind }
         end
     end
     if state.gag == "huge" then
-        add("Heavy-gag-232-with-bg_ergebnis.tga")
+        add("Heavy-gag-232-with-bg_ergebnis.tga", "gag")
     elseif state.gag == "small" then
-        add("small-gag-232-with-bg_ergebnis.tga")
+        add("small-gag-232-with-bg_ergebnis.tga", "gag")
     elseif state.gag == "full" then
-        add("kitty-mask-with-gag-232-with-bg_ergebnis.tga")
+        add("kitty-mask-with-gag-232-with-bg_ergebnis.tga", "gag")
     elseif state.gag == "nyamask" then
-        add("cute-kitty-mask-232-with-bg_ergebnis.tga")
+        add("cute-kitty-mask-232-with-bg_ergebnis.tga", "gag")
     elseif state.gag == "inflatable" then
-        add("Inflatable-gag-232-with-bg_ergebnis.tga")
+        add("Inflatable-gag-232-with-bg_ergebnis.tga", "gag")
     end
     if state.blind == "light" then
-        add("Light-Blindfold-232-with-bg_ergebnis.tga")
+        add("Light-Blindfold-232-with-bg_ergebnis.tga", "blindfold")
     elseif state.blind == "mask" then
-        add("Cute-Kitty-Blindfold-232-with-bg_ergebnis.tga")
+        add("Cute-Kitty-Blindfold-232-with-bg_ergebnis.tga", "blindfold")
     elseif state.blind == "full" then
-        add("Heavy-Blindfold-232-with-bg_ergebnis.tga")
+        add("Heavy-Blindfold-232-with-bg_ergebnis.tga", "blindfold")
     end
     if state.ears == "kitten" then
-        add("Kitten-Earmuffs-bg_ergebnis.tga")
+        add("Kitten-Earmuffs-bg_ergebnis.tga", "earmuffs")
     elseif state.ears == "heavy" then
-        add("Heav-Earmuffs-bg_ergebnis.tga")
+        add("Heav-Earmuffs-bg_ergebnis.tga", "earmuffs")
     end
     if state.mittens == "locked" or state.mittens == "heavy" then
-        add("locking-paw-mitten-232-with-bg_ergebnis.tga")
+        add("locking-paw-mitten-232-with-bg_ergebnis.tga", "mittens")
     elseif state.mittens == "squeaking" then
-        add("paw-mitten-232-with-bg_ergebnis.tga")
+        add("paw-mitten-232-with-bg_ergebnis.tga", "mittens")
     end
     if state.heels == "maid" then
-        add("maid-heell-232-with-bg_ergebnis.tga")
+        add("maid-heell-232-with-bg_ergebnis.tga", "heels")
     elseif state.heels == "high" then
-        add("heell-232-with-bg_ergebnis.tga")
+        add("heell-232-with-bg_ergebnis.tga", "heels")
     elseif state.heels == "ballet" then
-        add("balletheel-232-with-bg_ergebnis.tga")
+        add("balletheel-232-with-bg_ergebnis.tga", "heels")
     end
     if state.bell == true then
-        add("bell-232-with-bg_ergebnis.tga")
+        add("bell-232-with-bg_ergebnis.tga", "bell")
     end
     if state.tail == true then
-        add("tail-bell-232-with-bg_ergebnis.tga")
+        add("tail-bell-232-with-bg_ergebnis.tga", "tailbell")
     end
     if state.jewel == true then
-        add("jewel-232-with-bg_ergebnis.tga")
+        add("jewel-232-with-bg_ergebnis.tga", nil)
     end
     if state.belt == true then
-        add("Chastitybelt.tga")
+        add("Chastitybelt.tga", "chastitybelt")
     end
     if state.bra == true then
-        add("chastitybra.tga")
+        add("chastitybra.tga", "chastitybra")
     end
     local toys = state.toys or {}
     local list = CCT.State and CCT.State.Toys or {}
     for i = 1, #list do
         local row = toys[list[i].id]
         if type(row) == "table" and row.applied == true then
-            add(ToyIcon(list[i].id))
+            add(ToyIcon(list[i].id), nil)
         end
     end
     if state.leash == true then
-        add("leash-232-with-gb_ergebnis.tga")
+        add("leash-232-with-gb_ergebnis.tga", nil)
+    end
+    return rows
+end
+
+local function RowIcons(rows)
+    local icons = {}
+    for i = 1, #rows do
+        icons[i] = rows[i].icon
     end
     return icons
 end
 
+local function Now()
+    if CCT.UnixNow then
+        return CCT.UnixNow()
+    end
+    if type(time) == "function" then
+        return time()
+    end
+    return 0
+end
+
+local function Remaining(state, bind)
+    if type(bind) ~= "string" or type(state) ~= "table" or type(state.locks) ~= "table" then
+        return nil
+    end
+    local lock = state.locks[bind]
+    local unlockAt = type(lock) == "table" and tonumber(lock.unlockAt) or nil
+    if unlockAt == nil then
+        return nil
+    end
+    local left = math.floor(unlockAt - Now())
+    if left < 1 then
+        return nil
+    end
+    return left
+end
+
+local function TimeText(state, bind)
+    local left = Remaining(state, bind)
+    if left == nil then
+        return nil
+    end
+    local minutes = math.floor(left / 60)
+    local hours = math.floor(minutes / 60)
+    if hours > 0 then
+        return string.format("%dh%dm", hours, minutes % 60)
+    end
+    if minutes > 0 then
+        return string.format("%dm", minutes)
+    end
+    return string.format("%ds", left)
+end
+
 function CCT.Pictures.Icons(state)
-    return CollectIcons(state)
+    return RowIcons(CollectRows(state))
+end
+
+function CCT.Pictures.Times(state)
+    state = state or (CCT.State and CCT.State.Get and CCT.State.Get())
+    local rows = CollectRows(state)
+    local labels = {}
+    for i = 1, #rows do
+        labels[i] = TimeText(state, rows[i].bind)
+    end
+    return labels
+end
+
+function CCT.Pictures.IconStep()
+    return BIND_SIZE + BIND_GAP
 end
 
 function CCT.Pictures.Binds(state)
@@ -223,7 +291,7 @@ local function EnsureStrip()
         return strip
     end
     strip = CreateFrame("Frame", "CatgirlBindsStrip", UIParent)
-    strip:SetSize(BIND_SIZE * 8, BIND_SIZE)
+    strip:SetSize(BIND_SIZE, BIND_SIZE + LABEL_HEIGHT)
     strip:SetPoint("TOP", UIParent, "TOP", 0, -40)
     strip:SetMovable(true)
     strip:EnableMouse(true)
@@ -234,6 +302,8 @@ local function EnsureStrip()
         strip:SetClampedToScreen(true)
     end
     strip.icons = {}
+    strip.times = {}
+    strip.rows = {}
     strip:Hide()
     return strip
 end
@@ -308,38 +378,151 @@ function CCT.Pictures.Tick(now)
     HidePopup()
 end
 
-local function DrawStrip(icons)
+local function StopCountdown()
+    if countdown and countdown.Cancel then
+        countdown:Cancel()
+    end
+    countdown = nil
+end
+
+local function AnyTimer(rows, state)
+    for i = 1, #rows do
+        if TimeText(state, rows[i].bind) ~= nil then
+            return true
+        end
+    end
+    return false
+end
+
+local function PaintTimes(frame, state)
+    local rows = frame.rows or {}
+    for i = 1, #rows do
+        local label = frame.times and frame.times[i]
+        if label then
+            local text = TimeText(state, rows[i].bind)
+            if text then
+                if label.SetText then
+                    label:SetText(text)
+                end
+                if label.Show then
+                    label:Show()
+                end
+            else
+                if label.SetText then
+                    label:SetText("")
+                end
+                if label.Hide then
+                    label:Hide()
+                end
+            end
+        end
+    end
+end
+
+local function RefreshCountdowns()
+    if strip == nil or type(strip.rows) ~= "table" then
+        StopCountdown()
+        return
+    end
+    if strip.IsShown and strip:IsShown() ~= true then
+        StopCountdown()
+        return
+    end
+    local state = CCT.State and CCT.State.Get and CCT.State.Get()
+    PaintTimes(strip, state)
+    if not AnyTimer(strip.rows, state) then
+        StopCountdown()
+    end
+end
+
+local function EnsureCountdown()
+    if countdown ~= nil or C_Timer == nil or type(C_Timer.NewTicker) ~= "function" then
+        return
+    end
+    countdown = C_Timer.NewTicker(1, RefreshCountdowns)
+end
+
+local function MakeLabel(frame, tex)
+    if type(frame.CreateFontString) ~= "function" then
+        return nil
+    end
+    local label = frame:CreateFontString(nil, "OVERLAY", "GameFontHighlightSmall")
+    if type(label) ~= "table" then
+        return nil
+    end
+    if label.SetFont then
+        label:SetFont("Fonts\\FRIZQT__.TTF", 9, "OUTLINE")
+    end
+    if label.SetJustifyH then
+        label:SetJustifyH("CENTER")
+    end
+    if label.SetWidth then
+        label:SetWidth(BIND_SIZE + BIND_GAP)
+    end
+    if label.SetTextColor then
+        label:SetTextColor(1, 0.85, 0.2)
+    end
+    if label.SetPoint then
+        label:SetPoint("TOP", tex, "BOTTOM", 0, -1)
+    end
+    if label.Hide then
+        label:Hide()
+    end
+    return label
+end
+
+local function DrawStrip(rows, state)
     local frame = EnsureStrip()
     if frame == nil then
         return
     end
-    if type(icons) ~= "table" or #icons == 0 then
+    if type(rows) ~= "table" or #rows == 0 then
+        frame.rows = {}
         frame:Hide()
+        StopCountdown()
         return
     end
+    frame.rows = rows
+    local width = #rows * BIND_SIZE + (#rows - 1) * BIND_GAP
+    frame:SetSize(width, BIND_SIZE + LABEL_HEIGHT)
     frame:Show()
     if type(frame.CreateTexture) ~= "function" then
         return
     end
-    for i = 1, #icons do
+    for i = 1, #rows do
         local tex = frame.icons[i]
         if tex == nil then
             tex = frame:CreateTexture(nil, "ARTWORK")
             tex:SetSize(BIND_SIZE, BIND_SIZE)
-            tex:SetPoint("LEFT", frame, "LEFT", (i - 1) * BIND_SIZE, 0)
             frame.icons[i] = tex
         end
+        if tex.ClearAllPoints then
+            tex:ClearAllPoints()
+        end
+        tex:SetPoint("TOPLEFT", frame, "TOPLEFT", (i - 1) * (BIND_SIZE + BIND_GAP), 0)
         if tex.SetTexture then
-            tex:SetTexture(icons[i])
+            tex:SetTexture(rows[i].icon)
         end
         if tex.Show then
             tex:Show()
         end
+        if frame.times[i] == nil then
+            frame.times[i] = MakeLabel(frame, tex)
+        end
     end
-    for i = #icons + 1, #frame.icons do
+    for i = #rows + 1, #frame.icons do
         if frame.icons[i].Hide then
             frame.icons[i]:Hide()
         end
+        if frame.times[i] and frame.times[i].Hide then
+            frame.times[i]:Hide()
+        end
+    end
+    PaintTimes(frame, state)
+    if AnyTimer(rows, state) then
+        EnsureCountdown()
+    else
+        StopCountdown()
     end
 end
 
@@ -353,10 +536,11 @@ local function Seen(list, icon)
 end
 
 local function OnState(state)
-    local icons = CollectIcons(state)
+    local rows = CollectRows(state)
+    local icons = RowIcons(rows)
     if baseline == nil then
         baseline = icons
-        DrawStrip(icons)
+        DrawStrip(rows, state)
         return
     end
     for i = 1, #icons do
@@ -365,7 +549,7 @@ local function OnState(state)
         end
     end
     baseline = icons
-    DrawStrip(icons)
+    DrawStrip(rows, state)
 end
 
 function CCT.Pictures.Replay(now)
@@ -390,8 +574,9 @@ function CCT.Pictures.OnEvent(_, event)
         return
     end
     local state = CCT.State and CCT.State.Get and CCT.State.Get()
-    baseline = CollectIcons(state)
-    DrawStrip(baseline)
+    local rows = CollectRows(state)
+    baseline = RowIcons(rows)
+    DrawStrip(rows, state)
     if not listening and CCT.State and type(CCT.State.Listen) == "function" then
         CCT.State.Listen(OnState)
         listening = true

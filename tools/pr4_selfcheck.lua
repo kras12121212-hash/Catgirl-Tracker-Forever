@@ -917,6 +917,113 @@ C_SpellBook = nil
 GetCursorInfo = nil
 actions[1] = nil
 
+for slot = 1, 120 do
+    actions[slot] = nil
+end
+local pawPickup = PickupSpell
+PickupSpell = function() end
+GetCursorInfo = function()
+    if cursor then
+        return cursor.type, cursor.id
+    end
+end
+C_Spell = {
+    GetSpellName = function(id)
+        if id == 100 then
+            return "Fireball"
+        end
+        if id == 200 then
+            return "Frostbolt"
+        end
+    end,
+    PickupSpell = function() end,
+}
+C_SpellBook = {
+    FindSpellBookSlotForSpell = function(key)
+        if key == "Fireball" then
+            return 4, 0
+        end
+        if key == "Frostbolt" then
+            return 5, 0
+        end
+    end,
+    PickupSpellBookItem = function(index)
+        if index == 4 then
+            pawPickup(100)
+        elseif index == 5 then
+            pawPickup(200)
+        end
+    end,
+}
+actions[1] = { type = "spell", id = 100 }
+actions[2] = { type = "spell", id = 200 }
+check("mittens cover one spell before the leash", CCT.Mittens.Set("Nyx", "locked") == true)
+local pawRow = macroByName.PawMittensOops
+local function countAction(id)
+    local count = 0
+    for slot = 1, 120 do
+        if actions[slot] and actions[slot].id == id then
+            count = count + 1
+        end
+    end
+    return count
+end
+check("one paw macro before the leash", pawRow ~= nil and countAction(pawRow.index) == 1)
+local leashed = CCT.Leash.Apply(true, "Nyx")
+local kept = char().leashSlots
+check(
+    "leash keeps both spells under the paw swap",
+    leashed == true
+        and kept[1].actionType == "spell"
+        and kept[1].name == "Fireball"
+        and kept[2].actionType == "spell"
+        and kept[2].name == "Frostbolt"
+        and countAction(pawRow.index) == 0
+)
+local pawTicker = nil
+for i = 1, #tickers do
+    if tickers[i].interval == 5 and tickers[i].cancelled ~= true then
+        pawTicker = tickers[i]
+    end
+end
+check("leash pauses the paw swap", pawTicker == nil)
+CCT.Leash.Apply(false, "Nyx")
+if button.scripts.PostClick then
+    button.scripts.PostClick()
+end
+check(
+    "unleash restores both spells and one paw macro",
+    actions[1] ~= nil
+        and actions[2] ~= nil
+        and countAction(pawRow.index) == 1
+        and ((actions[1].id == 100 and actions[2].id == pawRow.index) or (actions[2].id == 200 and actions[1].id == pawRow.index) or (actions[1].id == 200 and actions[2].id == pawRow.index) or (actions[2].id == 100 and actions[1].id == pawRow.index))
+)
+local covered = actions[1].id == pawRow.index and 1 or 2
+local resumed = nil
+for i = 1, #tickers do
+    if tickers[i].interval == 5 and tickers[i].cancelled ~= true then
+        resumed = tickers[i]
+    end
+end
+local placesBefore = #places
+resumed.fn()
+local putBack = false
+for i = placesBefore + 1, #places do
+    local row = places[i]
+    if row.slot == covered and row.cursor and row.cursor.type == "spell" then
+        putBack = true
+    end
+end
+check("paw swap after unleash puts that spell back", resumed ~= nil and putBack == true and countAction(pawRow.index) == 1)
+CCT.Mittens.Set("Nyx", "none")
+for slot = 1, 120 do
+    actions[slot] = nil
+end
+PickupSpell = pawPickup
+GetCursorInfo = nil
+C_Spell = nil
+C_SpellBook = nil
+
 local syncBackup = char().leashSlots
 actions[5] = { type = "spell", id = 77 }
 CCT.State.SetLeash(true, "Nyx")

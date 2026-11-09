@@ -104,7 +104,7 @@ local USER_KEYS = {
     sender = true,
 }
 
-local MANY_KEYS = { lk = true, ty = true, z = true, p = true }
+local MANY_KEYS = { lk = true, ty = true, z = true, p = true, h = true }
 local NO_SPLIT = { prox = true, ack = true, ledgerack = true }
 local WEEK_KINDS = { ledger = true, zones = true, pets = true, ownerweek = true }
 local RELIABLE = {
@@ -1286,6 +1286,16 @@ local function SplitMany(key, remainder)
             sender = nil
         end
         return { action = action, sender = sender and DecodeUser(sender) or nil, raw = remainder }
+    end
+    if key == "h" then
+        local mapID, x, y, stamp = tostring(remainder):match("^([^:]+):([^:]+):([^:]+):([^:]+)$")
+        return {
+            mapID = tonumber(mapID),
+            x = tonumber(x),
+            y = tonumber(y),
+            t = tonumber(stamp),
+            raw = remainder,
+        }
     end
     return { raw = remainder }
 end
