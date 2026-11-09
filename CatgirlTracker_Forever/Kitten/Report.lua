@@ -204,6 +204,58 @@ local function ShownHeat(state)
     return math.floor(((tonumber(state and state.heat) or 0) + 0.5))
 end
 
+local function Whole(value)
+    local n = math.floor(tonumber(value) or 0)
+    if n < 0 then
+        n = 0
+    end
+    return n
+end
+
+local function KittenLife()
+    local short = CCT.Player and CCT.Player.short
+    local chars = CCT.db and CCT.db.chars
+    if type(short) ~= "string" or type(chars) ~= "table" or type(chars[short]) ~= "table" then
+        return nil
+    end
+    local life = chars[short].life
+    if type(life) ~= "table" then
+        return nil
+    end
+    return life
+end
+
+-- Counts for the owner stats. The timestamp list stays on the kitten.
+-- orgWeek is the scorecard week counter, which survives the fifty-stamp cap.
+local function OrgasmWire(state)
+    local life = KittenLife()
+    local list = type(life) == "table" and life.orgasms or nil
+    local total = 0
+    local last = nil
+    if type(life) == "table" then
+        total = Whole(life.total)
+        local seen = type(list) == "table" and #list or 0
+        if total < seen then
+            total = seen
+        end
+    end
+    if type(list) == "table" then
+        for i = 1, #list do
+            local at = tonumber(list[i])
+            if at ~= nil and (last == nil or at >= last) then
+                last = at
+            end
+        end
+    end
+    local today = 0
+    if CCT.Submissiveness and type(CCT.Submissiveness.OrgasmsToday) == "function" then
+        today = Whole(CCT.Submissiveness.OrgasmsToday(life, CCT.UnixNow()))
+    end
+    local week = Whole(type(state.counters) == "table" and state.counters.orgasm or 0)
+    local denied = Whole(type(life) == "table" and life.denied or 0)
+    return total, today, week, denied, last
+end
+
 local function PosKey(pos)
     if type(pos) ~= "table" then
         return ""
@@ -344,6 +396,14 @@ function CCT.Report.StateFields(state)
     Add(fields, "inst", state.instanceType or "")
     Add(fields, "heat", ShownHeat(state))
     Add(fields, "sub", tonumber(state.sub) or 0)
+    local orgTotal, orgDay, orgWeek, orgDeny, orgLast = OrgasmWire(state)
+    Add(fields, "orgTotal", orgTotal)
+    Add(fields, "orgDay", orgDay)
+    Add(fields, "orgWeek", orgWeek)
+    Add(fields, "orgDeny", orgDeny)
+    if orgLast ~= nil then
+        Add(fields, "orgLast", math.floor(orgLast))
+    end
     local locks = state.locks or {}
     local binds = CCT.State and CCT.State.LockBinds or {}
     for i = 1, #binds do

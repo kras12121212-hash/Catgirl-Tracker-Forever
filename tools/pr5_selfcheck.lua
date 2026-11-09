@@ -736,6 +736,7 @@ dressOff()
 CCT.Submissiveness.Recompute(now)
 
 char().life.denied = 0
+char().life.total = 0
 char().life.orgasms = {}
 CCT.State.SetBelt(false)
 CCT.State.SetHeat(0)
@@ -745,7 +746,24 @@ local sentBeforeOrgasm = #sent
 CCT.Heat.Add(100)
 local flash = frameNamed("CatgirlHeatOrgasmFlash")
 check("a failed orgasm texture stays hidden", flash ~= nil and flash.shown ~= true and state().heat == 0, "heat " .. tostring(state().heat))
-check("orgasm records the week and the life list", state().counters.orgasm == orgasmsBefore + 1 and #char().life.orgasms == 1 and state().counters.heatPeak == 100)
+check("orgasm records the week and the life list", state().counters.orgasm == orgasmsBefore + 1 and #char().life.orgasms == 1 and char().life.total == 1 and state().counters.heatPeak == 100)
+local orgasmWire = CCT.Report.StateFields(state())
+local function orgasmField(name)
+    for i = 1, #orgasmWire do
+        if tostring(orgasmWire[i][1]):lower() == name then
+            return orgasmWire[i][2]
+        end
+    end
+    return nil
+end
+check(
+    "state snapshot carries the orgasm counts",
+    tonumber(orgasmField("orgtotal")) == 1
+        and tonumber(orgasmField("orgday")) == 1
+        and tonumber(orgasmField("orgweek")) == state().counters.orgasm
+        and tonumber(orgasmField("orgdeny")) == 0
+        and tonumber(orgasmField("orglast")) == char().life.orgasms[1]
+)
 check("an allowed orgasm does not whisper", #sent == sentBeforeOrgasm)
 check("deny did not move", state().counters.deny == deniesBefore)
 
@@ -768,7 +786,7 @@ for _ = #char().life.orgasms + 1, 55 do
     CCT.State.SetHeat(0)
     CCT.Heat.Add(100)
 end
-check("life orgasms keep the newest fifty", #char().life.orgasms == 50)
+check("life orgasms keep the newest fifty", #char().life.orgasms == 50 and char().life.total == 55)
 
 CCT.State.SetBelt(true)
 CCT.State.SetBeltMode("deny")

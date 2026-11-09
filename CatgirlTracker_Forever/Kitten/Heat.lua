@@ -398,6 +398,8 @@ local function RecordOrgasm(now)
             char.life.orgasms = {}
         end
         local list = char.life.orgasms
+        local total = tonumber(char.life.total) or #list
+        char.life.total = total + 1
         list[#list + 1] = tonumber(now) or CCT.UnixNow()
         while #list > ORGASM_CAP do
             table.remove(list, 1)

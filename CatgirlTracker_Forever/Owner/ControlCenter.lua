@@ -1819,6 +1819,37 @@ local function TimerLines(summary)
     return "Timed removals:\n" .. table.concat(lines, "\n")
 end
 
+local function FormatOrgasmTime(stamp)
+    stamp = tonumber(stamp)
+    if stamp == nil or stamp <= 0 then
+        return "Never"
+    end
+    if type(date) == "function" then
+        local text = date("%Y-%m-%d %H:%M", stamp)
+        if type(text) == "string" then
+            return text
+        end
+    end
+    return tostring(math.floor(stamp))
+end
+
+local function HeatLines(heat, state)
+    local orgasm = type(state) == "table" and state.orgasm or nil
+    local total = type(orgasm) == "table" and tonumber(orgasm.total) or 0
+    local today = type(orgasm) == "table" and tonumber(orgasm.today) or 0
+    local week = type(orgasm) == "table" and tonumber(orgasm.week) or 0
+    local denied = type(orgasm) == "table" and tonumber(orgasm.denied) or 0
+    local last = type(orgasm) == "table" and orgasm.last or nil
+    return table.concat({
+        string.format("Kitten Heat Bar: %d / 100", heat),
+        "Orgasm Counter: " .. tostring(total or 0),
+        "Last Orgasm: " .. FormatOrgasmTime(last),
+        "Orgasms Today: " .. tostring(today or 0),
+        "Orgasms This Week: " .. tostring(week or 0),
+        "Denied Orgasms: " .. tostring(denied or 0),
+    }, "\n")
+end
+
 local function SkillLines(state)
     local levels = type(state) == "table" and state.heelLevel or {}
     if type(levels) ~= "table" then
@@ -1913,11 +1944,12 @@ local function PaintStats(summary)
         y = y - (LineCount(SkillLines(state)) * 14) - 8
         local heat = math.max(0, math.min(100, tonumber(summary.heat) or 0))
         local sub = math.max(0, math.min(100, tonumber(summary.sub) or 0))
-        FillText(stats.heatText, string.format("Kitten Heat Bar: %d / 100", heat))
+        local heatBody = HeatLines(heat, state)
+        FillText(stats.heatText, heatBody)
         Put(stats.heatHeader, 8, y)
         y = y - 22
         Put(stats.heatText, 8, y)
-        y = y - 22
+        y = y - (LineCount(heatBody) * 14) - 8
         Widget(stats.subBar, "SetValue", sub)
         Widget(stats.subBar, "SetStatusBarColor", 0.35, 0.8, 0.6)
         Widget(stats.subBar.text, "SetText", string.format("Kitten Submissiveness: %d / 100", sub))

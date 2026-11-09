@@ -122,6 +122,7 @@ end
 local function NewLife()
     return {
         denied = 0,
+        total = 0,
         orgasms = {},
     }
 end
@@ -159,6 +160,13 @@ local function RepairChar(char)
         end
         if type(char.life.orgasms) ~= "table" then
             char.life.orgasms = {}
+        end
+        local seen = #char.life.orgasms
+        local total = tonumber(char.life.total)
+        if total == nil or total < seen then
+            char.life.total = seen
+        else
+            char.life.total = math.floor(total)
         end
     end
     if type(char.nya) ~= "table" then

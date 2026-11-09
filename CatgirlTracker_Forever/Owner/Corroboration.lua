@@ -343,6 +343,13 @@ function CCT.Corroboration.ApplyState(sender, parsed)
         instanceType = fields.inst or "",
         heat = tonumber(fields.heat) or 0,
         sub = tonumber(fields.sub) or 0,
+        orgasm = {
+            total = tonumber(fields.orgtotal) or 0,
+            today = tonumber(fields.orgday) or 0,
+            week = tonumber(fields.orgweek) or 0,
+            denied = tonumber(fields.orgdeny) or 0,
+            last = tonumber(fields.orglast),
+        },
         locks = LockTable(parsed.many),
         toys = ToyTable(parsed.many),
         pos = row.state and row.state.pos or nil,

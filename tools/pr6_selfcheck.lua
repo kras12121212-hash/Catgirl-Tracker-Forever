@@ -680,6 +680,26 @@ check(
         and browse.hours.cctEnabled == true
         and browse.status:GetText():find("Kitten: Kitten", 1, true) == 1
 )
+local orgasmParsed = CCT.Net.Parse("State,rev:20,gag:none,heat:4,sub:3,orgtotal:6,orgday:2,orgweek:4,orgdeny:9,orglast:1700000000")
+local orgasmApplied = CCT.Corroboration.ApplyState("Kitten", orgasmParsed)
+local orgasmSummary = CCT.Control.Summary()
+local orgasmText = browse.stats and browse.stats.heatText and browse.stats.heatText:GetText() or ""
+local orgasmWhen = date("%Y-%m-%d %H:%M", 1700000000)
+check(
+    "owner stats show orgasm counts",
+    orgasmApplied == true
+        and orgasmSummary.state.orgasm.total == 6
+        and orgasmSummary.state.orgasm.today == 2
+        and orgasmSummary.state.orgasm.week == 4
+        and orgasmSummary.state.orgasm.denied == 9
+        and orgasmSummary.state.orgasm.last == 1700000000
+        and orgasmText:find("Orgasm Counter: 6", 1, true) ~= nil
+        and orgasmText:find("Orgasms Today: 2", 1, true) ~= nil
+        and orgasmText:find("Orgasms This Week: 4", 1, true) ~= nil
+        and orgasmText:find("Denied Orgasms: 9", 1, true) ~= nil
+        and orgasmText:find("Last Orgasm: " .. orgasmWhen, 1, true) ~= nil
+        and orgasmText:find("This Session", 1, true) == nil
+)
 local launcher = CCT.Control.Launcher()
 check("cgcc button is shown", launcher ~= nil and launcher:GetText() == "cgcc" and launcher:IsShown() == true)
 if launcher and launcher.scripts and launcher.scripts.OnClick then
