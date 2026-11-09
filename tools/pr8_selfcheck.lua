@@ -443,6 +443,48 @@ check("nya chance clamps", CCT.NyaOptions.SetChance(4) == true and CCT.Nya.GetSe
 CCT.NyaOptions.SetChance(50)
 local window = CCT.Control.Open()
 check("settings block attaches", window ~= nil and window.nya ~= nil and window.maid ~= nil and window.maid:GetText() == "0 items, 0 instructions")
+local nyaChecks = 0
+if window.nya and type(window.nya.checks) == "table" then
+    for _, check in pairs(window.nya.checks) do
+        if type(check.points) == "table" and #check.points > 0 then
+            nyaChecks = nyaChecks + 1
+        end
+    end
+end
+check(
+    "nyachat panel shows the options",
+    window.nya ~= nil
+        and window.nya.title ~= nil
+        and window.nya.title.text == "NyaChat"
+        and nyaChecks == 12
+        and type(window.nya.cctHeight) == "number"
+        and window.nya.cctHeight > 280
+        and window.nya.chance ~= nil
+        and window.nya.chance.text == "50"
+        and window.nya.preview ~= nil
+        and window.nya.preview.text:find("nya", 1, true) ~= nil
+)
+if CCT.State and CCT.State.SetGag then
+    CCT.State.SetGag("none")
+end
+local bn = {}
+BNSendWhisper = function(_, msg)
+    bn[#bn + 1] = msg
+end
+CCT.Chat.Install()
+BNSendWhisper(7, "Hello")
+check("nyachat stays quiet while off", #bn == 1 and bn[1] == "Hello")
+CCT.Nya.SetOption("enabled", true)
+CCT.Nya.SetOption("asciiEmotes", false)
+BNSendWhisper(7, "Hello")
+local sayMark = #chats
+SendChatMessage("Hello", "SAY")
+check("nyachat rewrites say", #chats == sayMark + 1 and chats[#chats].msg == "Hello nya~")
+check("nyachat rewrites a bnet whisper", bn[2] == "Hello nya~")
+CCT.Chat.Send("Status line", "GUILD", nil, nil, { raw = true })
+check("raw chat skips nyachat", chats[#chats].msg == "Status line")
+CCT.Nya.SetOption("enabled", false)
+CCT.Nya.SetOption("asciiEmotes", true)
 
 -- Pet macro, button, and the five-minute reminder.
 local carriers = {

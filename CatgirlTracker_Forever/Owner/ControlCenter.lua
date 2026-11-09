@@ -1273,7 +1273,11 @@ local function BuildSettings(parent, rows, seen)
             block:ClearAllPoints()
         end
         Widget(block, "SetPoint", "TOPLEFT", 4, nyaAnchor)
-        y = nyaAnchor - 280
+        local nyaHeight = 280
+        if type(block) == "table" and type(block.cctHeight) == "number" then
+            nyaHeight = block.cctHeight
+        end
+        y = nyaAnchor - nyaHeight
     end
     Widget(child, "SetHeight", math.max(720, -y + 40))
     Widget(scroll, "UpdateScrollChildRect")
@@ -2112,7 +2116,14 @@ local function PaintMaid()
         window.nya:ClearAllPoints()
         window.nya:SetPoint("TOPLEFT", window.maid, "BOTTOMLEFT", -4, -12)
     end
-    local base = 720 + itemHeight + noteHeight
+    if window.nya and CCT.NyaOptions and type(CCT.NyaOptions.Paint) == "function" then
+        CCT.NyaOptions.Paint(window.nya)
+    end
+    local nyaExtra = 0
+    if type(window.nya) == "table" and type(window.nya.cctHeight) == "number" and window.nya.cctHeight > 280 then
+        nyaExtra = window.nya.cctHeight - 280
+    end
+    local base = 720 + itemHeight + noteHeight + nyaExtra
     Widget(child, "SetHeight", base)
     local scroll = child.GetParent and child:GetParent() or nil
     Widget(scroll, "UpdateScrollChildRect")
