@@ -1,8 +1,9 @@
 -- CatNya macro and the draggable pet button.
--- The button toggles petSummoned. It does not know whether a battle pet is out.
--- Five minutes after login, one guild flavor line fires if the module is on
--- and the player is alive. That line is not a ledger row.
--- Macro edits wait for PLAYER_REGEN_ENABLED. This file does not move feature state.
+-- The summoned flag follows the cosmetic cat-carrier companion, not the button.
+-- A hunter pet is ignored, and this file does not ask whether a pet is dead.
+-- Every 10 minutes, a missing cat warns once. The next check sends the forgot line.
+-- That line is not a ledger row. Macro edits wait for PLAYER_REGEN_ENABLED.
+-- This file does not move feature state.
 
 local ADDON_NAME, CCT = ...
 
@@ -10,12 +11,12 @@ CCT.Pet = {}
 
 local MACRO_NAME = "CatNya"
 local MACRO_ICON = "INV_Misc_QuestionMark"
-local REMIND_SECONDS = 300
+local CHECK_SECONDS = 600
 local SUMMON_TEXT = "Summon your cat Nya !"
 local OUT_TEXT = "Good Kitten!, You Cat is Summoned"
 
 CCT.Pet.MACRO_NAME = MACRO_NAME
-CCT.Pet.REMIND_SECONDS = REMIND_SECONDS
+CCT.Pet.CHECK_SECONDS = CHECK_SECONDS
 
 local CARRIERS = {
     "Cat Carrier (Cornish Rex)",
@@ -27,15 +28,46 @@ local CARRIERS = {
     "Cat Carrier (White Kitten)",
 }
 
+-- Retail journal species ids for those seven carriers. A renamed pet still matches.
+-- Forever's companion list also uses the shorter critter names.
+local CAT_SPECIES = {
+    [40] = true, -- Bombay Cat
+    [41] = true, -- Cornish Rex Cat
+    [42] = true, -- Black Tabby Cat
+    [43] = true, -- Orange Tabby Cat
+    [44] = true, -- Siamese Cat
+    [45] = true, -- Silver Tabby Cat
+    [46] = true, -- White Kitten
+}
+
+local CAT_NAMES = {
+    ["Bombay Cat"] = true,
+    ["Bombay"] = true,
+    ["Cornish Rex Cat"] = true,
+    ["Cornish Rex"] = true,
+    ["Black Tabby Cat"] = true,
+    ["Black Tabby"] = true,
+    ["Orange Tabby Cat"] = true,
+    ["Orange Tabby"] = true,
+    ["Siamese Cat"] = true,
+    ["Siamese"] = true,
+    ["Silver Tabby Cat"] = true,
+    ["Silver Tabby"] = true,
+    ["White Kitten"] = true,
+}
+
 CCT.Pet.CARRIERS = CARRIERS
+CCT.Pet.CAT_SPECIES = CAT_SPECIES
 
 local button = nil
 local summoned = false
 local macroReady = false
 local pendingMacro = false
-local reminded = false
-local remindWaiting = false
-local loginAt = nil
+local warned = false
+local forgotSent = false
+local checkWaiting = false
+local nextAt = nil
+local ticker = nil
 
 local function Enabled()
     if CCT.Module and type(CCT.Module.Enabled) == "function" then
@@ -94,9 +126,113 @@ function CCT.Pet.Summoned()
     return summoned
 end
 
-function CCT.Pet.Toggle()
-    ApplySummoned(not CCT.Pet.Summoned())
-    return CCT.Pet.Summoned()
+local function KnownCat(speciesID, speciesName)
+    if CAT_SPECIES[tonumber(speciesID) or -1] == true then
+        return true
+    end
+    return type(speciesName) == "string" and CAT_NAMES[speciesName] == true
+end
+
+local function Secret(value)
+    return type(issecretvalue) == "function" and issecretvalue(value) == true
+end
+
+-- "cat", "other", "none", or "unknown". Cosmetic journal only.
+local function JournalCat()
+    local journal = C_PetJournal
+    if type(journal) ~= "table" or type(journal.GetSummonedPetGUID) ~= "function" then
+        return "unknown"
+    end
+    local ok, guid = pcall(journal.GetSummonedPetGUID)
+    if not ok or Secret(guid) then
+        return "unknown"
+    end
+    if type(guid) ~= "string" or guid == "" then
+        return "none"
+    end
+    local speciesID, speciesName = nil, nil
+    if type(journal.GetPetInfoTableByPetID) == "function" then
+        local infoOk, info = pcall(journal.GetPetInfoTableByPetID, guid)
+        if infoOk and type(info) == "table" and not Secret(info) then
+            speciesID = info.speciesID
+            speciesName = info.name
+        end
+    end
+    if speciesID == nil and speciesName == nil and type(journal.GetPetInfoByPetID) == "function" then
+        local infoOk, id, _, _, _, _, _, _, name = pcall(journal.GetPetInfoByPetID, guid)
+        if infoOk and not Secret(id) and not Secret(name) then
+            speciesID = id
+            speciesName = name
+        end
+    end
+    if Secret(speciesID) or Secret(speciesName) then
+        return "unknown"
+    end
+    if speciesID == nil and type(speciesName) ~= "string" then
+        return "unknown"
+    end
+    if KnownCat(speciesID, speciesName) then
+        return "cat"
+    end
+    return "other"
+end
+
+-- Classic critter companions. "CRITTER" is not a hunter pet.
+local function CritterCat()
+    if type(GetNumCompanions) ~= "function" or type(GetCompanionInfo) ~= "function" then
+        return "unknown"
+    end
+    local countOk, count = pcall(GetNumCompanions, "CRITTER")
+    if not countOk or Secret(count) then
+        return "unknown"
+    end
+    count = tonumber(count) or 0
+    local saw = false
+    for i = 1, count do
+        local infoOk, _, name, _, _, isSummoned = pcall(GetCompanionInfo, "CRITTER", i)
+        if not infoOk or Secret(name) or Secret(isSummoned) then
+            return "unknown"
+        end
+        saw = true
+        if isSummoned == true and CAT_NAMES[name] == true then
+            return "cat"
+        end
+    end
+    if count == 0 or saw then
+        return "none"
+    end
+    return "unknown"
+end
+
+function CCT.Pet.CatOut()
+    local journal = JournalCat()
+    if journal == "cat" then
+        return true
+    end
+    if journal == "other" then
+        return false
+    end
+    local critter = CritterCat()
+    if critter == "cat" then
+        return true
+    end
+    if journal == "unknown" and critter == "unknown" then
+        return nil
+    end
+    return false
+end
+
+function CCT.Pet.Refresh()
+    local out = CCT.Pet.CatOut()
+    if out == nil then
+        return nil
+    end
+    ApplySummoned(out)
+    if out then
+        warned = false
+        forgotSent = false
+    end
+    return out
 end
 
 local function SavePoint(frame)
@@ -250,7 +386,7 @@ function CCT.Pet.Click()
         end
         return false
     end
-    return CCT.Pet.Toggle()
+    return true
 end
 
 function CCT.Pet.Apply()
@@ -258,6 +394,7 @@ function CCT.Pet.Apply()
     if frame == nil then
         return false
     end
+    CCT.Pet.Refresh()
     if Enabled() then
         ArmButton()
         frame:Show()
@@ -281,43 +418,71 @@ local function Announce(key)
     return true
 end
 
-function CCT.Pet.Remind()
-    if reminded or not Enabled() then
+local function Warn()
+    if print then
+        print("|cffffcc00[CatgirlTracker]:|r " .. CCT.Msg("PET_SUMMON_WARN"))
+    end
+    return true
+end
+
+function CCT.Pet.Step()
+    if not Enabled() then
         return false
     end
     if not Alive() then
-        remindWaiting = true
+        checkWaiting = true
         return false
     end
-    reminded = true
-    remindWaiting = false
-    if CCT.Pet.Summoned() then
-        return Announce("PET_SUMMON_GOOD")
+    checkWaiting = false
+    local out = CCT.Pet.Refresh()
+    if out == nil or out == true then
+        return false
     end
-    return Announce("PET_SUMMON_BAD")
+    if not warned then
+        warned = true
+        return Warn()
+    end
+    if forgotSent then
+        return false
+    end
+    local sent = Announce("PET_SUMMON_BAD")
+    if sent then
+        forgotSent = true
+    end
+    return sent
 end
 
 function CCT.Pet.Check(now)
+    if not Enabled() then
+        return false
+    end
     local stamp = tonumber(now)
-    if loginAt == nil or stamp == nil then
+    if nextAt == nil or stamp == nil then
         return false
     end
-    if stamp - loginAt < REMIND_SECONDS then
+    if stamp < nextAt then
         return false
     end
-    return CCT.Pet.Remind()
+    nextAt = stamp + CHECK_SECONDS
+    return CCT.Pet.Step()
 end
 
 local function OnLogin()
-    ApplySummoned(false)
-    loginAt = type(time) == "function" and time() or 0
-    reminded = false
-    remindWaiting = false
+    local stamp = type(time) == "function" and time() or 0
+    nextAt = stamp + CHECK_SECONDS
+    warned = false
+    forgotSent = false
+    checkWaiting = false
     CCT.Pet.EnsureMacro()
     CCT.Pet.Apply()
-    if Enabled() and C_Timer and type(C_Timer.After) == "function" then
-        C_Timer.After(REMIND_SECONDS, function()
-            CCT.Pet.Remind()
+    if ticker and type(ticker.Cancel) == "function" then
+        ticker:Cancel()
+        ticker = nil
+    end
+    if Enabled() and C_Timer and type(C_Timer.NewTicker) == "function" then
+        ticker = C_Timer.NewTicker(CHECK_SECONDS, function()
+            local clock = type(time) == "function" and time() or nil
+            CCT.Pet.Check(clock)
         end)
     end
 end
@@ -325,11 +490,11 @@ end
 if CreateFrame then
     local events = CreateFrame("Frame")
     events:RegisterEvent("PLAYER_LOGIN")
-    events:RegisterEvent("PLAYER_DEAD")
     events:RegisterEvent("PLAYER_ALIVE")
     events:RegisterEvent("PLAYER_UNGHOST")
     events:RegisterEvent("PLAYER_REGEN_ENABLED")
     events:RegisterEvent("UPDATE_MACROS")
+    events:RegisterEvent("COMPANION_UPDATE")
     events:SetScript("OnEvent", function(_, event)
         if event == "PLAYER_LOGIN" then
             OnLogin()
@@ -338,13 +503,16 @@ if CreateFrame then
         if not Enabled() then
             return
         end
-        if event == "PLAYER_DEAD" then
-            ApplySummoned(false)
+        if event == "COMPANION_UPDATE" then
+            CCT.Pet.Refresh()
+            if button and button.SetText and button.shown ~= false then
+                button:SetText(CCT.Pet.Summoned() and OUT_TEXT or SUMMON_TEXT)
+            end
             return
         end
         if event == "PLAYER_ALIVE" or event == "PLAYER_UNGHOST" then
-            if remindWaiting then
-                CCT.Pet.Remind()
+            if checkWaiting then
+                CCT.Pet.Step()
             end
             return
         end

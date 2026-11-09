@@ -533,39 +533,130 @@ summon.pointReturn = { "BOTTOM", nil, "BOTTOM", 3, -20 }
 summon.scripts.OnDragStop(summon)
 check("string point is saved", moved.petButton and moved.petButton.point == "BOTTOM" and moved.petButton.x == 3 and moved.petButton.y == -20)
 local clicked = CCT.Pet.Click()
-check("click toggles summoned", clicked == true and CCT.Pet.Summoned() == true and summon.text == "Good Kitten!, You Cat is Summoned")
-CCT.Pet.Click()
-check("click toggles back", CCT.Pet.Summoned() == false and summon.text == "Summon your cat Nya !")
+check("click does not decide the cat", clicked == true and CCT.Pet.Summoned() == false and summon.text == "Summon your cat Nya !")
+check("pet check ignores a hunter pet", petSrc:find('GetCompanionInfo, "CRITTER"', 1, true) ~= nil and petSrc:find("UnitExists", 1, true) == nil and petSrc:find("HasPetUI", 1, true) == nil and petSrc:find("PetIsDead", 1, true) == nil)
+local summonedGuid = nil
+local petInfo = nil
+C_PetJournal = {
+    GetSummonedPetGUID = function()
+        return summonedGuid
+    end,
+    GetPetInfoTableByPetID = function()
+        return petInfo
+    end,
+}
+summonedGuid = "BattlePet-1"
+petInfo = { speciesID = 42, name = "Black Tabby Cat", customName = "Fluffy" }
+fire("COMPANION_UPDATE")
+check("black tabby carrier counts", CCT.Pet.Summoned() == true and summon.text == "Good Kitten!, You Cat is Summoned")
+petInfo = { speciesID = 999, name = "Calico Cat", customName = "Fluffy" }
+fire("COMPANION_UPDATE")
+check("another cat does not count", CCT.Pet.Summoned() == false and summon.text == "Summon your cat Nya !")
+petInfo = { speciesID = 46, name = "Weißes Kätzchen", customName = "Snow" }
+fire("COMPANION_UPDATE")
+check("white kitten species counts", CCT.Pet.Summoned() == true)
+summonedGuid = nil
+petInfo = nil
+fire("COMPANION_UPDATE")
+check("no cosmetic pet is not summoned", CCT.Pet.Summoned() == false)
+local critterName = nil
+local critterOut = false
+GetNumCompanions = function(kind)
+    if kind == "CRITTER" then
+        return critterName and 1 or 0
+    end
+    return 0
+end
+GetCompanionInfo = function(kind, index)
+    if kind == "CRITTER" and index == 1 then
+        return 1, critterName, 10675, nil, critterOut
+    end
+    return nil
+end
+C_PetJournal = nil
+critterName = "Black Tabby"
+critterOut = true
+fire("COMPANION_UPDATE")
+check("forever critter name counts", CCT.Pet.Summoned() == true)
+critterName = "Wolf"
+critterOut = true
+fire("COMPANION_UPDATE")
+check("another critter does not count", CCT.Pet.Summoned() == false)
+GetNumCompanions = nil
+GetCompanionInfo = nil
+C_PetJournal = {
+    GetSummonedPetGUID = function()
+        return nil
+    end,
+    GetPetInfoTableByPetID = function()
+        return nil
+    end,
+}
 
 dead = true
 inGuild = true
 now = 5000
 local chatsBefore = #chats
+local linesBefore = #lines
 fire("PLAYER_LOGIN")
-check("early reminder waits", CCT.Pet.Check(5299) == false and #chats == chatsBefore)
-check("dead reminder waits", CCT.Pet.Check(5300) == false and #chats == chatsBefore)
+check("early reminder waits", CCT.Pet.Check(5599) == false and #chats == chatsBefore and #lines == linesBefore)
+check("dead check waits", CCT.Pet.Check(5600) == false and #chats == chatsBefore and #lines == linesBefore)
 dead = false
 fire("PLAYER_ALIVE")
-check("revival sends the bad line once", #chats == chatsBefore + 1 and chats[#chats].chatType == "GUILD" and chats[#chats].msg == CCT.Msg("PET_SUMMON_BAD"))
+check(
+    "revival warns once",
+    #lines == linesBefore + 1
+        and lines[#lines]:find(CCT.Msg("PET_SUMMON_WARN"), 1, true) ~= nil
+        and #chats == chatsBefore
+)
 fire("PLAYER_ALIVE")
-check("reminder does not repeat", #chats == chatsBefore + 1)
+check("revival does not warn again", #lines == linesBefore + 1 and #chats == chatsBefore)
+check(
+    "next check sends the forgot line",
+    CCT.Pet.Check(6200) == true
+        and #chats == chatsBefore + 1
+        and chats[#chats].chatType == "GUILD"
+        and chats[#chats].msg == CCT.Msg("PET_SUMMON_BAD")
+        and kittenTasks() == 0
+)
+check("forgot line does not repeat", CCT.Pet.Check(6800) == false and #chats == chatsBefore + 1)
 CCT.db.settings.flavorAnnouncements = false
 now = 8000
 fire("PLAYER_LOGIN")
-CCT.Pet.Check(8300)
+CCT.Pet.Check(8600)
+CCT.Pet.Check(9200)
 check("flavor off sends nothing", #chats == chatsBefore + 1)
 CCT.db.settings.flavorAnnouncements = true
 inGuild = false
 now = 9000
 fire("PLAYER_LOGIN")
-CCT.Pet.Check(9300)
+CCT.Pet.Check(9600)
+CCT.Pet.Check(10200)
 check("guild absence sends nothing", #chats == chatsBefore + 1)
 inGuild = true
-now = 10000
+now = 11000
 fire("PLAYER_LOGIN")
-CCT.Pet.Click()
-CCT.Pet.Check(10300)
-check("summoned reminder is the good line", chats[#chats].msg == CCT.Msg("PET_SUMMON_GOOD") and chats[#chats].chatType == "GUILD" and kittenTasks() == 0)
+C_PetJournal = {
+    GetSummonedPetGUID = function()
+        return "BattlePet-2"
+    end,
+    GetPetInfoTableByPetID = function()
+        return { speciesID = 40, name = "Bombay Cat" }
+    end,
+}
+fire("COMPANION_UPDATE")
+check("summoned cat skips the warning", CCT.Pet.Check(11600) == false and #chats == chatsBefore + 1 and CCT.Pet.Summoned() == true)
+C_PetJournal = {
+    GetSummonedPetGUID = function()
+        return nil
+    end,
+    GetPetInfoTableByPetID = function()
+        return nil
+    end,
+}
+fire("COMPANION_UPDATE")
+local linesAtDismiss = #lines
+check("dismiss starts with a warning", CCT.Pet.Check(12200) == true and #chats == chatsBefore + 1 and #lines == linesAtDismiss + 1)
 CCT.Module.Set("PetTracker", false)
 CCT.Pet.Apply()
 check("disabled pet button hides", summon.shown == false)

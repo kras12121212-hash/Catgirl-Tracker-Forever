@@ -240,7 +240,7 @@ One table, `CCT.State`, mirrored into `db.chars[short].state`. Modules mutate it
 | `zone` | string | `GetRealZoneText` or `GetZoneText` | |
 | `instanceType` | string | second return of `IsInInstance`, or `none` | |
 | `pos` | `{mapID, x, y, instanceID, t}` or nil | map fractions, 4 decimal places | Latest only in the snapshot. Trail is separate |
-| `petSummoned` | bool | the CatNya button toggles it | Not a scorecard field |
+| `petSummoned` | bool | true while one of the seven cat-carrier companions is summoned | Not a scorecard field. A hunter pet does not set it |
 | `week` | string | `YYYY-Www` | |
 | `counters` | table | weekly absolutes | Reset on week change |
 | `rev` | int | | Bumped on every mutation |
@@ -501,7 +501,11 @@ Item names go through `C_Item` (`C_Item.GetItemInfo`, `C_Item.GetItemCount`). Cl
 
 #### Pet and zone
 
-`CreateLocalMacro.lua` writes one general macro named `CatNya` whose body is only `/use` lines for the seven cat carriers listed in that file. Retry after combat if `CreateMacro` was blocked. The pet button is a `SecureActionButtonTemplate` that runs that macro, toggles `petSummoned`, and is draggable. Five minutes after login, if the module is enabled and the player is alive, one guild flavor line fires: `PET_SUMMON_GOOD` or `PET_SUMMON_BAD`. That line is not a ledger row. The button does not know whether a battle pet is actually summoned. Classic toggles a boolean on click (`PetTracker.lua` lines 157–166). Keep that.
+`CreateLocalMacro.lua` writes one general macro named `CatNya` whose body is only `/use` lines for the seven cat carriers listed in that file. Retry after combat if `CreateMacro` was blocked. The pet button is a `SecureActionButtonTemplate` that runs that macro and is draggable. It does not decide `petSummoned`.
+
+Forever can read the summoned cosmetic companion. `C_PetJournal.GetSummonedPetGUID` and the species id are the check. The seven cat-carrier species are Bombay Cat 40, Cornish Rex Cat 41, Black Tabby Cat 42, Orange Tabby Cat 43, Siamese Cat 44, Silver Tabby Cat 45, and White Kitten 46. A renamed pet still counts. Any other companion does not, including other cats. A hunter pet does not, and the check does not ask whether a pet is dead. If the classic critter list is present, a summoned critter named Bombay, Cornish Rex, Black Tabby, Orange Tabby, Siamese, Silver Tabby, or White Kitten counts the same way. Those are the short names on the Forever companion list.
+
+Every 10 minutes, while the module is on and the player is alive, look again. The first time none of those cats is out, print a local warning. On the next check, if that cat is still not out, send `PET_SUMMON_BAD` once. Summoning one of those cats clears the warning. The line is not a ledger row. Classic could not see the carrier cat, so `PetTracker.lua` lines 157–166 toggled a boolean on click. Do not keep that toggle.
 
 Zone: on `PLAYER_ENTERING_WORLD` and `ZONE_CHANGED_NEW_AREA`, wait 1 second, then if `GetRealZoneText()` or `GetZoneText()` changed, call the minute clock with `now = time()` and the zone being left, then set `state.zone`. That call uses `whole = floor((now - minuteStamp) / 60)` and then sets `minuteStamp = now`, the same formula as the 60-second ticker. It does not add 1, and the ticker does not add 1 either. A reload does not add the offline gap. The owner snapshot includes the current zone name. The master receives the zone-minute map as a `Zones` message in the same snapshot version as the ledger. A same-seq `Zones` part replaces the zone map, and a same-seq `Ledger` that arrives after it still writes the counters. The raw zone log is not stored.
 

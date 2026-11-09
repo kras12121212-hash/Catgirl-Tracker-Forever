@@ -63,7 +63,7 @@ The Owner's maid list is sent to the kitten as a hidden addon message. The kitte
 
 ## The CatNya pet button
 
-A draggable button runs a macro named CatNya. The macro uses the cat-carrier items. The button remembers whether you marked the cat as summoned. Pet tracking starts on. Five minutes after login, one guild flavor line can fire while you are alive. That line is not a row on the weekly report.
+A draggable button runs a macro named CatNya. The macro uses the seven cat-carrier items. The addon reads the summoned cosmetic cat. A hunter pet does not count, and neither does any other companion. Pet tracking starts on. Every ten minutes, if one of those cats is not out, you get a warning. If it is still not out on the next check, one guild line says the kitten forgot to summon the cat. That line is not a row on the weekly report.
 
 ## Nya
 

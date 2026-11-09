@@ -14,6 +14,7 @@ CCT.Messages = {
 
     -- PetTracker
     PET_SUMMON_GOOD = "Was a good kitten, and remembered to summon their cat",
+    PET_SUMMON_WARN = "Your cat is not summoned. Summon your cat Nya !",
     PET_SUMMON_BAD = "Was a bad kitten, and forgot to summon their cat",
 
     -- NapTracker (guild + optional debug say)
