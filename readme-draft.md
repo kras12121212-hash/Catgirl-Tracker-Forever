@@ -12,11 +12,15 @@ A small **cgcc** button sits near the top of your screen. You can drag it. It co
 
 ## What she sees
 
-Her heat bar and her submissiveness bar appear once she has an owner. Under the submissiveness bar she can read today's orgasms, today's denials, and when that day resets. While she is in heels, two more bars sit with them: how fast she is walking, and how far this pair has trained her.
+Her heat bar and her submissiveness bar appear once she has an owner. The bars name themselves. Submissiveness is the upper bar. Heat is the one under it. While she is in heels, two more bars sit with them: how fast she is walking, and how far this pair has trained her.
 
-![Her heat, her submissiveness, and the two heel bars while she is learning to walk](Picture-Difrences-old-new-addonn/CGCC--Kitten-Bars-when-heels-are-on.png)
+![Her submissiveness bar and her heat bar](Interface-screenshots-for-Readme/Kitten-Submissivness-Heat-Bar.png)
+
+Under the submissiveness bar she can read today's orgasms, today's denials, and when that day resets.
 
 When you put something on her, a picture of it appears in front of her for a moment. What she is wearing stays as a row of small pictures at the top of her screen. She can drag that row. A piece on a timer shows the time left under its picture. A strike from your hands shows a smaller picture. Taking something off leaves the row, and the big picture stays away.
+
+![Two pictures in the row of what she is wearing](Interface-screenshots-for-Readme/Kitten-SStatus-icon-worn-itemspng.png)
 
 Other things live on her screen when they are needed. A dim veil when she is leashed. A dark or a mask when she is blindfolded. A paw at her cursor when her mittens are on. A reminder when a bell is on her. A small window for her cat. A small window for her maid work. A warning across the screen when it is time to nap.
 
@@ -24,25 +28,35 @@ Guild lines about a headpet, a nap, slacking, a heel fall, or her cat stay in he
 
 ## The owner window
 
-The window is Catgirl Control. It has five tabs: Stats, Control, Toys, Discipline, and Settings. Control, Toys, and Discipline keep each group closed until you open it. Hover a name and a larger picture of that piece appears. A small icon sits beside the row.
+The window is Catgirl Control. Close sits at the top right. Under the title, one line names her and shows her heat and her submissiveness, the same two feelings as her bars. The tabs are Stats, Control, Toys, Discipline, and Settings. The tab you are on is the quiet one. The others stay red.
 
-With no kitten assigned, the kitten buttons stay quiet. Stats says that most functions are not available. Advertise, Nya, debug, and the module switches stay yours, because they belong to this character.
+With no kitten assigned, the kitten buttons stay quiet. Stats says that most functions are not available. Advertise, debug, and the module switches stay yours, because they belong to this character.
 
-Once she is yours, the top of the window names her. If it has not heard from her yet, it says there is no snapshot. Refresh asks again. The page fills in as she reports, and it keeps painting while the window is open.
+Once she is yours, that top line names her. If it has not heard from her yet, it says there is no snapshot. Refresh, on Stats, asks again. The page fills in as she reports, and it keeps painting while the window is open.
 
-The picture below is the older window. It is here as a picture of the idea. Forever uses the same tabs and the same closed groups. Open one and the pieces inside are split into Apply and Remove. Each timed removal has its own little box for the time, beside that removal, under Remove.
+Control, Toys, and Discipline keep each group closed until you open it. A closed group reads `[+]`. An open group reads `[-]`. The window scrolls, so the later groups are under the ones you can see.
 
-![The older control tab, closed groups for leash, gags, blindfolds, ears, bells, mittens, chastity, heels, and tracking](Picture-Difrences-old-new-addonn/CGCC-Stats-Owner-control-CladdicAddon-general.png)
+Open a group and the pieces split into Apply and Remove. A small picture sits beside a piece that has one. Rest the cursor on the name, or on that small picture, and a large picture of it opens beside the window.
 
-![The older window with a group open, and a large picture when the name is hovered](Picture-Difrences-old-new-addonn/CGCC-Controll-Owner--ClassicAddon-subcategroeis-that-are-extandable-hovering-over-items-shows-bigger-picture.png)
+A timed removal has a little box beside it, under Remove. The box starts at 1.5. Type the hours you want, then click the line. That box belongs to that removal.
+
+The picture has Gags and Masks open. Leash is the group above it. Blindfolds, Earmuffs, and Bells are the next closed groups. Mittens, Chastity, Heels, and Tracking are the groups under those. Scroll to reach them.
+
+![Catgirl Control on the Control tab, with Gags and Masks open](Interface-screenshots-for-Readme/Owner-catgirlcontrolcenter-Control.png)
 
 ## What the stats page shows
 
 Stats is the first tab. Refresh is at the top.
 
-The picture is the older stats page, as a picture of the idea. Forever's page is the same kind of look at her. It shows her three heel skills, her heat, how many times she has come, the last time, today, this week, how many times she has been denied in all, how many denials today, and when today resets. The two bars sit under that. Pictures of what she is wearing come next. Then the time left on anything locked to a clock. Then a plain list of what is on her: gag, blindfold, ears, mittens, heels, bells, jewel, belt, bra, and leash. Toys that are in her are listed with them, including when one is humming or filled. If the tracking jewel is on and you are on the same map, the page also says how far she is. Otherwise that distance stays unknown.
+Kitten Skills lists her three heel levels: maid heels, high heels, and ballet boots.
 
-![The older stats page: skills, heat, orgasms, the two bars, and the gear she is wearing](Picture-Difrences-old-new-addonn/CGCC-Stats-Owner-Part1-ClassicAddon-part1.png)
+Kitten Heat Status lists her heat, her orgasm counter, the last time she came, orgasms today, orgasms this week, and denied orgasms. Denied orgasms is the lifetime. The two bars sit under that list, the same bars she has on her own screen.
+
+Kitten Gear is the row of pictures of what she is wearing. Under that, timed removals say none, or they name each piece and the time left on it.
+
+Controls Status is the plain list. The picture starts it: gag, blindfold, earmuffs, paw mittens. Scroll for the rest. Heels, the collar bell, the tail bell, the tracking jewel, the chastity belt, the chastity bra, and the leash follow. If a toy is in her, a Toys block names it, and whether it is humming or filled. If the tracking jewel is on and you are on the same map, the page also says how far she is. Otherwise that distance stays unknown.
+
+![The stats tab: her skills, her heat, the two bars, her gear, and the start of the controls list](Interface-screenshots-for-Readme/Owner-catgirlcontrolcenter-stats.png)
 
 ## Heat, submissiveness, orgasms, and spanks
 
@@ -80,7 +94,7 @@ If you want her soft and deep in it, leave her dressed, let her keep practicing 
 
 If you want her to come down, allow the orgasm, take the gear off, and wait for midnight. Her owner's hands will still warm her. They are not a way to lower the bar.
 
-She can see today's orgasms, today's denials, and when those counts reset, under her submissiveness bar. You can see the same day on the stats tab.
+She can see today's orgasms, today's denials, and when those counts reset, under her submissiveness bar. You can see the same day on the stats tab, as orgasms today, and you can see denied orgasms as the lifetime.
 
 ### Names used above
 
@@ -90,71 +104,95 @@ She can see today's orgasms, today's denials, and when those counts reset, under
 | Worn toys | Left in or on her. They warm her for as long as they stay. | Small Butplug, Large Butplug, Taill Butplug, Inflatable Butplug, Inflatable Dildo, Vibes Pussy, Vibes Nipples |
 | Automated toys | They can zap her without your hand. A mild zap and a big zap are not the same, and her submissiveness right now decides which way it goes. Left in, they also warm her on their own. | Dildo, Vibes Ears, Nipple Piercings, Ear Piercings, Pussy Lipps Piercings |
 
-When she is allowed to come, the moment flashes over her and the heat empties. When the belt refuses her, it shocks her, the heat falls back from the top, and the denial is kept. That lifetime of denials stays on the stats page. The day underneath her bar is only today.
+When she is allowed to come, the moment flashes over her and the heat empties. When the belt refuses her, it shocks her, the heat falls back from the top, and the denial is kept. That lifetime of denials is Denied Orgasms on the stats page. The day underneath her bar is only today.
 
 ## Dressing her
 
-Everything you put on her is on the Control tab, in a group you open. Apply is how it goes on. Remove is how it comes off, including a removal you set for later.
+Everything you put on her is on the Control tab, in a group you open. Apply is how it goes on. Remove is how it comes off, including a removal you set for later. The open Gags and Masks group in the picture above is the shape of every group.
 
 ### Gags
 
 A gag changes the speech everyone hears: say, yell, party, raid, guild, officer, and the instance. A whisper and an emote stay in her own words.
 
-The cute kitten mask leaves the words and pushes nya, and little faces, into every sentence. She will feel the urge.
+Apply, in that group:
 
-A small gag softens her letters and leaves a nya on the end. She can still be understood, if you listen.
+The cute kitten mask leaves the words and pushes nya, and little faces, into every sentence. She will feel the urge. The button is Cute Kitten Mask.
 
-A heavy gag takes the words away. What comes out is only a muffled sound, the same sound a few times.
+A small gag softens her letters and leaves a nya on the end. She can still be understood, if you listen. The button is Small Gag.
 
-The kitty mask with a gag stops her completely. She is told that nothing can escape, and the line she tried to say never goes out.
+A heavy gag takes the words away. What comes out is only a muffled sound, the same sound a few times. The button is Heavy Gag.
 
-An inflatable gag starts soft. Inflate and Deflate are their own buttons, the same idea as the toy picture further down. A little air and she still talks, with a muffled edge. More air and the words break up. All the way up and she can only moan. As it gets fuller she starts to drool on her own.
+The kitty mask with a gag stops her completely. She is told that nothing can escape, and the line she tried to say never goes out. The button is Kitty Mask With Gag!
+
+An inflatable gag starts soft. The button is Inflatable Gag. Inflate Gag and Deflate Gag are their own buttons under Apply. A little air and she still talks, with a muffled edge. More air and the words break up. All the way up and she can only moan. As it gets fuller she starts to drool on her own.
+
+Remove is Ungag, and Remove Gag in X Hours beside the little hours box.
+
+When a small gag goes on, chat shows the scene. The line to her owner says she has been gagged with a small gag, and hopefully that will be a lesson. The whisper to her says a small silken gag is over her mouth, and speech is now garbled.
+
+![The chat when a small gag goes on](Interface-screenshots-for-Readme/Kitten-Gaged-message.png)
 
 Ungag gives her voice back.
 
 ### Blindfolds
 
-A light blindfold dims the world. She can still click.
+The group is Blindfolds.
 
-A cute kitty blindfold plays a mask closing over her screen. Taking it off plays the mask opening again.
+A light blindfold dims the world. She can still click. The button is Light Blindfold.
 
-A full blindfold goes black, and she cannot click through it. She is told when she can see again.
+A cute kitty blindfold closes a mask over her screen. The world stays in two eye holes. Her bars, the cgcc button, and her cat window stay where she can see them through the left eye. She can still move the cursor in the dark around the mask. The button is Cute Kitty Blindfold.
+
+![The cute kitty blindfold, the world left in two eye holes](Interface-screenshots-for-Readme/Kitten-masked.png)
+
+A full blindfold goes black, and she cannot click through it. She is told when she can see again. The button is Full Blindfold.
+
+Remove Blindfold takes it off. Remove Blindfold in X Hours is the timer, with its own hours box.
 
 ### Mittens
 
-Lockable paw mittens spoil her paws. A paw follows her cursor. A spell on her bar is covered, and it creaks when she tries to cast. The spell is put back, and then the paw takes it again.
+The group is Mittens.
 
-Squeaking paw mittens are lighter. They squeak when she casts, and they only meddle with a spell for a short turn, now and then.
+Lockable Paw Mittens spoil her paws. A paw follows her cursor. A spell on her bar is covered, and it creaks when she tries to cast. The spell is put back, and then the paw takes it again.
+
+Squeking Paw Mittens are lighter. They squeak when she casts, and they only meddle with a spell for a short turn, now and then.
 
 While she is on the leash, that meddling waits. She can follow. When the leash comes off, the paws start again if the mittens are still on.
 
-Removing the mittens gives her paws and claws back, and the covered spell is restored.
+Remove Paw Mittens gives her paws and claws back, and the covered spell is restored. Remove Paw Mittens in X Hours is the timer.
 
 ### Heels
 
-Three pairs live in this group: maid heels, high heels, and ballet boots. The button names them. The higher the heel, the harder it is to walk, and an untrained kitten in the ballet boots will hurt sooner.
+The group is Heels. Three pairs: Locking Maid Heels 3-CM, Locking High Heels 8-CM, and Locking Ballet Boot 12-CM. The higher the heel, the harder it is to walk, and an untrained kitten in the ballet boots will hurt sooner.
 
 While they are on, she watches the balance bar. Walk slowly. If she runs, the bar flares, she falls, a picture of the heels covers her for a moment, and the guild can hear that she fell. She is warned to take it slow.
 
 The level bar fills as she practices the pair she is wearing. All three skills stay with her after the heels come off. You can see each level on Stats. A fall does not wipe the skill. Midnight does not wipe it either. Her steps click while she walks.
 
+Remove Heels takes them off. Remove Heels in X Hours is the timer.
+
 ### Ears
 
-Earmuffs change what she hears, once she has an owner. Say, yell, party, raid, and guild come through the muffs. Her own typing still follows the gag, if she is wearing one.
+The group is Earmuffs. They change what she hears, once she has an owner. Say, yell, party, raid, and guild come through the muffs. Her own typing still follows the gag, if she is wearing one.
 
-Kitten earmuffs sprinkle nya through other people's sentences. She can follow them, with a lot of nya in the way.
+Kitten Earmuffs sprinkle nya through other people's sentences. She can follow them, with a lot of nya in the way.
 
-Heavy earmuffs turn what she reads into a mush of stars and tildes. The meaning is gone until you take them off.
+Heavy Earmuffs turn what she reads into a mush of stars and tildes. The meaning is gone until you take them off.
+
+Remove Earmuffs gives her hearing back. Remove Earmuffs in X Hours is the timer.
 
 ### Bells
 
-A collar bell rings at odd moments while she is moving. The screen reminds her that it might ring at the wrong time.
+The group is Bells.
 
-A tail bell rings with her steps, and the screen says so. If she stands still, the jingling stops. If you are close enough to be with her, you can hear the bell too.
+Attach Bell puts a collar bell on her. It rings at odd moments while she is moving. The screen reminds her that it might ring at the wrong time.
 
-Each bell comes off on its own button.
+Attach Tail Bell rings with her steps, and the screen says so. If she stands still, the jingling stops. If you are close enough to be with her, you can hear the bell too.
+
+Remove Bell and Remove Tail Bell each take off their own bell. Each has its own hours box: Remove Bell in X Hours, and Remove Tail Bell in X Hours.
 
 ### The leash
+
+The group is Leash. The buttons are Leash and Unleash.
 
 Leash clips her to you. Her screen dims and tells her to press 1 to follow. Once she is following, it tells her to click to stop. The spells that were sitting on her bar are put back when you unleash her. The person who leashed her is the one who can take it off.
 
@@ -162,7 +200,9 @@ The leash warms her for as long as it is on. It also lifts her submissiveness wh
 
 ### Chastity
 
-The belt seals her pleasure. The bra seals her chest. Each has its own lock and its own removal.
+The group is Chastity.
+
+Lock Chastity Belt seals her pleasure. Lock Chastity Bra seals her chest. Each has its own removal and its own hours box: Remove Chastity Belt, Remove Chastity Belt in X Hours, Remove Chastity Bra, and Remove Chastity Bra in X Hours.
 
 On the belt, Deny Orgasm and Allow Orgasm are the choice from the heat section. Deny keeps her on the edge when the bar fills. Allow lets her come. Taking the belt off lets her feel again, and the belt returns to allow.
 
@@ -172,7 +212,7 @@ While the belt is locked, a toy or a strike that belongs under it will not go on
 
 Every piece above, except the leash, can be set to come off later. The jewel and the toys are the other exceptions: they wait for you.
 
-Open the group, look under Remove, and find the line that says the piece comes off in so many hours. A small box sits beside that line. It starts with a suggestion. Type how long you want, then click the line. That box belongs to that piece. Each timed removal has its own.
+Open the group, look under Remove, and find the line that says the piece comes off in so many hours. The small box beside that line starts at 1.5. Type how long you want, then click the line. That box belongs to that piece. Each timed removal has its own.
 
 The time keeps going if she logs out. If it runs out while she is away, the piece is already off when she returns, and she is told then. On her screen the time sits under the picture. On your stats page it is listed with the other timed removals.
 
@@ -180,25 +220,29 @@ If you take the piece off yourself, the timer is simply gone. She does not get t
 
 ## Toys
 
-Toys are the second tab. The picture is the older window, as the idea of the list. Forever keeps the same toys, each in a group you open. Inside, you put it in, take it out, and use whatever that toy can do.
+Toys is the second tab. Each toy is a group you open. The picture has the dildo open, and the rest of the list closed under it: Inflatable Butplug, Inflatable Dildo, Small Butplug, Large Butplug, Taill Butplug, Vibes Pussy, Vibes Nipples, Vibes Ears, Nipple Piercings, and Ear Piercings. Pussy Lipps Piercings is the last group. Scroll if the window stops before it.
 
-![The older toys tab, one closed group for each toy](Picture-Difrences-old-new-addonn/CGCC-Stats-Owner-toys-CladdicAddon-general.png)
+![The toys tab, with the dildo open and the other toys closed](Interface-screenshots-for-Readme/Owner-catgirlcontrolcenter-Toys.png)
 
 The three names in the heat section are the whole toy box. Worn toys warm her for as long as they stay. Automated toys can zap her, and her submissiveness right now decides whether that zap warms her or scares her. Left in, those warm her too.
 
-You do not need a different ritual for each one. Open it. Apply puts it in her. Remove takes it out. If it hums, a vibe control turns that hum up. If it shocks, the shock control is the zap, and a mild one and a hard one are not the same feeling. If it inflates, Inflate and Deflate are separate. The picture below is the older window of that idea. Forever does the same: the fill and the release are their own buttons, and the inflatable gag on the Control tab works the same way.
+You do not need a different ritual for each one. Open it. Apply puts it in her. Remove takes it out. The open dildo is the shape. Apply Dildo and Remove Dildo are the two long buttons. Dildo Vibe is a row of buttons, a light hum up to a hard one. Dildo Shock is a shorter row, a mild zap and then harder ones.
 
-![The older toy group, with Inflate and Deflate as their own buttons](Picture-Difrences-old-new-addonn/CGCC-Controll-Owner--ClassicAddon-inflate-deflate-seperate-buttons-example.png)
+A toy that only hums has the vibe row. A toy that can zap has the shock row too. A toy that fills has Inflate and Deflate as their own buttons, the same idea as Inflate Gag and Deflate Gag on the Control tab.
 
 She wears one buttplug at a time. Putting another in takes the first one out. A toy that belongs under the belt or the bra is refused while that lock is on. Stats lists what is in her, and whether it is humming or filled.
 
 ## Her owner's hands
 
-Discipline is the third tab. These are her owner's hands from the heat section. They always warm her. They do not move her submissiveness on their own. The picture is the older window, the list of tools kept closed until you open one.
+Discipline is the third tab. These are her owner's hands from the heat section. They always warm her. They do not move her submissiveness on their own.
 
-![The older discipline tab: the tools, closed until you open one](Picture-Difrences-old-new-addonn/CGCC-Stats-Owner-Discipline-CladdicAddon-general.png)
+The tools are Spank Hand, Pinch, Vibrating Wand, Shock Wand, Crop, Paddle, Heart Crop, and Whip. Each stays closed until you open it.
 
-Open a tool, choose where it lands, and choose how hard. A harder stroke is a stronger warmth. You have to be close to her, and the tracking jewel has to be on, or the strike does not land. Step in, and make sure the jewel is clipped to her collar, if the click stays quiet.
+![The discipline tab, with the vibrating wand open](Interface-screenshots-for-Readme/Owner-catgirlcontrolcenter-Discipline.png)
+
+Open a tool and the places it can land are rows. Each place has a short row of strengths. A higher number is a harder stroke, and a harder stroke is a stronger warmth. The picture has the vibrating wand open onto Tits, Pussy, and Ears. The other tools open onto their own places.
+
+You have to be close to her, and the tracking jewel has to be on, or the strike does not land. Step in, and make sure the jewel is clipped to her collar, if the click stays quiet.
 
 A place the belt or the bra is sealing will refuse the stroke. You are told. Pick somewhere the lock is not covering, or take the lock off first.
 
@@ -228,6 +272,8 @@ A small window asks her to summon her cat. The button reads "Summon your cat Nya
 
 She clicks the button and the cat comes out. Another click puts the cat away. She cannot do it in combat, or while she is dead. While she is dead the button asks her to summon again. When she is alive and the cat is out, the button praises her and the line underneath says the cat is summoned.
 
+![The cat window once her cat is out](Interface-screenshots-for-Readme/summon-cat.png)
+
 The line also shows how long until the addon looks again. The first time it looks and the cat is missing, she gets a private warning to summon Nya. If the cat is still missing the next time, the guild hears that she forgot. Summoning the cat clears that warning.
 
 The cat window can be turned off with the other modules. It starts on. The guild line about forgetting is a scolding. It is separate from the weekly scorecard.
@@ -244,11 +290,11 @@ This starts on. You can turn HeadPetTracker off if the guild should stay quiet a
 
 ## Maid tasks
 
-On Settings, Maid Tasks is where you paste an item and click Add Task. Maid Instructions is where you write what she should do and click Add. Each list can be trimmed with Remove on that line. The same item twice, or the same instruction twice, is left as the one line. If a list is too long to send, it does not go through, and it does not count.
+Settings holds the editors. Maid Tasks is where you paste an item and click Add Task. Maid Instructions is where you write what she should do and click Add. Each list can be trimmed with Remove on that line. The same item twice, or the same instruction twice, is left as the one line. If a list is too long to send, it does not go through, and it does not count.
 
-The picture is the older settings page, as the idea of those two editors and of the map day above them. Forever keeps both editors on Settings. An empty list says so, and tells you to paste an item or add an instruction.
+An empty task list says to paste an item and click Add Task. An empty instruction list says to add one above. A line under both counts the items and the instructions. The picture is that empty page.
 
-![The older settings page: the map day, maid tasks, and maid instructions](Picture-Difrences-old-new-addonn/CGCC-Stats-Owner-ClassicAddon-Maid-tasks-andMaidinstructions-on-owner-side-and-map-history.png)
+![Settings: the modules, Advertise, the map day, and the two maid editors](Interface-screenshots-for-Readme/Owner-catgirlcontrolcenter-Settings.png)
 
 On her screen, a window she can drag shows the instructions as a numbered list, and it shows those items as your inventory, with how many you are carrying. When both lists are empty, her window hides.
 
@@ -256,7 +302,9 @@ Sending the same list again is quiet. Changing it is a task for the week, counte
 
 ## Nya
 
-NyaChat is on Settings, under the maid editors. It rewrites chat this character types: say, yell, party, raid, guild, officer, whisper, emote, and channel. It stays off until you enable it. A gag still happens first, so a heavy gag or a full mask still takes the words. The addon's own lines, including maid notes and the cat, stay as they are.
+NyaChat is further down the Settings tab, under the maid editors. Scroll to it. The picture above stops at the maid count.
+
+It rewrites chat this character types: say, yell, party, raid, guild, officer, whisper, emote, and channel. It stays off until you enable it. A gag still happens first, so a heavy gag or a full mask still takes the words. The addon's own lines, including maid notes and the cat, stay as they are.
 
 Enable Nya, then choose the habits. Append nya. Tildes. Little ascii faces. Nya sprinkled through the sentence. UwU. Kitty words, so a yes becomes something softer. A stutter. Sparkle on the punctuation. A small action, a purr or a flick of the tail. Lowercase. A face trailing at the end.
 
@@ -264,15 +312,17 @@ Chance is how often a habit takes. A preview under the switches shows a sample o
 
 ## The map
 
-The tracking jewel is on the Control tab, in Tracking. Clip it to her collar and her walks can be remembered. Take it off and the new walks stop. She does not see her own trail.
+The tracking jewel is on the Control tab, in Tracking. The buttons are Attach Tracking Jewel, Force Kitty Group, and Remove Tracking Jewel. Clip the jewel to her collar and her walks can be remembered. Take it off and the new walks stop. She does not see her own trail. There is no timer on the jewel.
 
-KittenMapShow starts off. Turn it on from Settings, or with `/cctmodule KittenMapShow`. Then open your world map to the zone she is in. Her walks that day are dots on the map. Hover a dot for the time. Standing in one place for a while is one dot, with the span of that stay. Today also shows where she is right now.
+KittenMapShow starts off. Turn it on from Settings, or with `/cctmodule KittenMapShow`. The picture of Settings has it on, so the map can draw. Then open your world map to the zone she is in. Her walks that day are little cat faces on the map. Hover a face and the time comes up, the day and the hour. Standing in one place for a while is one face, with the span of that stay. Today also shows where she is right now. Your own marker on the map is still you.
 
-The slider on Settings, above the maid editors, picks the day. Today is one end. About a month back is the other. A day she did not walk with the jewel on stays empty. The picture of that slider is the older window, in the settings picture above. Forever uses that same day choice.
+![Cat faces on the world map, and the time on the face under the cursor](Interface-screenshots-for-Readme/Owner-Map-displaying-Kitten.png)
 
-The dots are for you. The guild master does not receive the trail.
+The slider on Settings is Map history day. It prints the date, and it says Today when the slider is on this day. The ends of the slider read 0 and 30. Today is one end. About a month back is the other. A day she did not walk with the jewel on stays empty.
 
-Force Kitty Group sits in that same Tracking group. She invites you into a party. If she is already in a group, she leaves it and then invites you. This is how you pull her to you. It is the group button on her Control tab.
+The faces are for you. The guild master does not receive the trail.
+
+Force Kitty Group sits in that same Tracking group. She invites you into a party. If she is already in a group, she leaves it and then invites you. This is how you pull her to you.
 
 Her owner's hands need this jewel, and they need you close. The stats page can tell you the distance while the jewel is on and you share a map.
 
@@ -290,14 +340,14 @@ When the week turns, that slate starts fresh. Her lifetime of orgasms, and her l
 
 ## The small switches
 
-Settings also has debug, the five modules, and Advertise. These stay clickable with no kitten assigned.
+Settings also has debug, the five modules, and Advertise. These stay clickable with no kitten assigned. They are the top of the Settings picture.
 
-Debug, and `/cctdebug`, make the addon talk when you are trying to see why something stayed quiet. Leave it off for roleplay.
+Enable debug output, and `/cctdebug`, make the addon talk when you are trying to see why something stayed quiet. Leave it off for roleplay. The picture has it checked so the row is easy to see.
 
-`/cctmodule` with nothing after it lists the five modules. `/cctmodule` and a name turns that one on or off. The same switches are checkboxes on Settings.
+`/cctmodule` with nothing after it lists the five modules. `/cctmodule` and a name turns that one on or off. The same switches are the checkboxes: HeadPetTracker, InnSlackerTracker, PetTracker, MaidTasks, and KittenMapShow.
 
 HeadPetTracker, InnSlackerTracker, PetTracker, and MaidTasks start on. KittenMapShow starts off. What each one does is in the sections above.
 
-Advertise, on Settings, opens a small window of five lines. `/cgcc advertise` opens the same window. You can open it before a kitten is assigned. The lines are kept for a shout, and a gag leaves them in the words you wrote. Shouting from that window stays off.
+Advertise, the red button under the checkboxes, opens a small window of five lines. `/cgcc advertise` opens the same window. You can open it before a kitten is assigned. The lines are kept for a shout, and a gag leaves them in the words you wrote. Shouting from that window stays off.
 
 `/cctmaster` with no name tells you who the guild master is, or that the name is still empty.
