@@ -14,7 +14,7 @@ Owners and kittens can read the player guide in [readme-draft.md](readme-draft.m
 
 **Owner.** One person for that kitten. The Owner opens `/cgcc` and applies gear from that window. A click from anyone else, including the Guild Master, does nothing.
 
-**Guild Master.** One character for the whole guild. Set the name with `/cctmaster First Last`. `First-Last` is the same name. The name starts empty. While it is empty, no character is Guild Master and kittens do not send the weekly report. The name is typed. It is not taken from a guild rank.
+**Guild Master.** One character for the whole guild. Set the name with `/cctmaster First Last`. `First-Last` is the same name. The name starts empty. While it is empty, no character is Guild Master and kittens do not send the daily scorecard. The name is typed. It is not taken from a guild rank.
 
 ## Commands
 
@@ -65,7 +65,7 @@ The other groups use the same shape. Blindfolds are Light Blindfold, Cute Kitty 
 
 ![The Control tab with Gags and Masks open](Interface-screenshots-for-Readme/Owner-catgirlcontrolcenter-Control.png)
 
-A command counts only after the message is accepted and the kitten answers that it applied. This window is the live controls. The weekly scorecard is a separate saved file, and this window does not draw it.
+A command counts only after the message is accepted and the kitten answers that it applied. This window is the live controls. The daily scorecard is a separate saved file, and this window does not draw it.
 
 Force Kitty Group invites the Owner. If the kitten is already in a party, the addon leaves that party and then sends the invite. There is no confirm frame.
 
@@ -105,7 +105,7 @@ Cute Kitty Blindfold draws a mask with two eye holes. The rest of the screen goe
 
 ## Advertise
 
-The advertise window holds five lines. Open it with `/cgcc advertise` or the Advertise button on Settings. Sending starts off for each character. Lines that do go out still pass through the gag. Advertise is separate from the five modules, and it is separate from the weekly scorecard.
+The advertise window holds five lines. Open it with `/cgcc advertise` or the Advertise button on Settings. Sending starts off for each character. Lines that do go out still pass through the gag. Advertise is separate from the five modules, and it is separate from the daily scorecard.
 
 ## Maid sync
 
@@ -113,7 +113,7 @@ The Owner's maid list is sent to the kitten as a hidden addon message. The kitte
 
 ## The CatNya pet button
 
-A small draggable window summons a cat from the pet collection. The seven cat-carrier cats count. The carrier item itself does not summon one anymore. The button label follows whether that cat is out. While the cat is out it reads `Good Kitten!, You Cat is Summoned`, and the line under the button reads `Cat is summoned`. The label changes back to summon when you die. The window shows how much time is left before the next check. A hunter pet does not count, and neither does any other companion. Pet tracking starts on. Every ten minutes, if one of those cats is not out, you get a warning. If it is still not out on the next check, one guild line says the kitten forgot to summon the cat. That line is not a row on the weekly report.
+A small draggable window summons a cat from the pet collection. The seven cat-carrier cats count. The carrier item itself does not summon one anymore. The button label follows whether that cat is out. While the cat is out it reads `Good Kitten!, You Cat is Summoned`, and the line under the button reads `Cat is summoned`. The label changes back to summon when you die. The window shows how much time is left before the next check. A hunter pet does not count, and neither does any other companion. Pet tracking starts on. Every ten minutes, if one of those cats is not out, you get a warning. If it is still not out on the next check, one guild line says the kitten forgot to summon the cat. That line is not a row on the daily scorecard.
 
 ![The cat window while a carrier cat is summoned](Interface-screenshots-for-Readme/summon-cat.png)
 
@@ -135,17 +135,17 @@ The map stays off until you enable KittenMapShow. The owner then sees where the 
 
 ![Cat-face pins on the world map, with the time tooltip](Interface-screenshots-for-Readme/Owner-Map-displaying-Kitten.png)
 
-## The weekly report
+## The daily scorecard
 
-Each kitten counts the week on their own computer. A week starts on Monday. The label looks like `2026-W45`, taken from that computer's clock. The week in progress, and one finished week behind it, are what can be sent.
+Each kitten counts the local day on their own computer. The label looks like `2026-11-10`, taken from that computer's clock. Fourteen days, including the day in progress, are what can be sent.
 
-When the Guild Master is online, those weeks are written into `CatgirlTrackerDB`. The game draws no scorecard, no copy box, and no leaderboard. The saved file is the report. A week this Guild Master never stored can be noted as missed. A finished week that rolls off the one saved slot can be noted as rotated. Those notes are not printed as a scorecard.
+When the Guild Master is online, those days are written into `CatgirlTrackerDB`. The game draws no scorecard, no copy box, and no leaderboard. The saved file is the report. A day this Guild Master never stored can be noted as missed. A day that rolls off the fourteen can be noted as rotated. Those notes are not printed as a scorecard. Week ids are ignored.
 
 The report includes time worn, tasks, heat, headpets, naps, slacking, and zones. The Owner's accepted commands are stored beside the kitten's own counts.
 
 ## Discord
 
-The addon cannot talk to Discord. It opens no webhook and no web request. A companion program, written later, reads `CatgirlTrackerDB` while the game is closed, posts a week, and deletes that week only after Discord has accepted it. The addon does not delete a week on its own.
+The addon cannot talk to Discord. It opens no webhook and no web request. A companion program, written later, reads the day rows in `CatgirlTrackerDB` while the game is closed and ignores week ids. It posts one day, and deletes that day only after Discord has accepted it. The addon does not delete a day on its own.
 
 ## What this version leaves out
 

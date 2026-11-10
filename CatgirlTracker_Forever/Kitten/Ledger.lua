@@ -1,4 +1,4 @@
--- Weekly ledger. One minute clock, one archive, absolute counters.
+-- Daily scorecard. One minute clock, fourteen days, absolute counters.
 -- tasks is stored here and stays at 0. PR 8 is the only increment.
 -- This file does not draw a scorecard and does not open a webhook.
 
@@ -6,8 +6,9 @@ local ADDON_NAME, CCT = ...
 
 CCT.Ledger = {}
 
-local MINUTE_CAP = 10080
-local CHAR_CAP = 32768
+local MINUTE_CAP = 1440
+local CHAR_CAP = 262144
+local CLOSED_CAP = 13
 local TIMER_GAP = 300
 
 local COUNTERS = {
@@ -29,9 +30,14 @@ local clockNow = nil
 local wasOnline = false
 local heldNoted = false
 local heartbeatSent = false
-local loginSent = false
 local rolling = false
+
+function CCT.Ledger.Rolling()
+    return rolling
+end
+
 local flushing = false
+local queuedClosed = {}
 
 local function Use(now)
     if now ~= nil then
@@ -53,11 +59,19 @@ function CCT.Ledger.Clock(now)
     return Use(now)
 end
 
-local function WeekId(now)
-    if CCT.Week == nil or type(CCT.Week.Id) ~= "function" then
+local function DayId(now)
+    if CCT.Day == nil or type(CCT.Day.Id) ~= "function" then
         return nil
     end
-    return CCT.Week.Id(now)
+    return CCT.Day.Id(now)
+end
+
+local function IsDayId(id)
+    return type(id) == "string" and id:match("^%d%d%d%d%-%d%d%-%d%d$") ~= nil
+end
+
+local function IsWeekId(id)
+    return type(id) == "string" and id:match("^%d%d%d%d%-W%d%d$") ~= nil
 end
 
 local function MasterName()
@@ -220,40 +234,40 @@ local function Say(text)
     end
 end
 
-local function DropArchive(char, untilWeek)
-    if type(char) ~= "table" or type(char.archive) ~= "table" then
+local function DropClosed(char, untilDay)
+    if type(char) ~= "table" or type(char.days) ~= "table" or #char.days < 1 then
         return false
     end
-    local id = char.archive.week
-    char.archive = nil
+    local row = table.remove(char.days, 1)
+    local id = type(row) == "table" and row.day or nil
     if type(id) ~= "string" or id == "" then
         return false
     end
-    char.droppedWeek = id
+    char.droppedDay = id
     char.dropSend = id
-    char.dropUntil = untilWeek
-    Say("|cffffff00CatgirlTracker:|r Unacked week " .. id .. " was dropped before it was retained.")
+    char.dropUntil = untilDay
+    Say("|cffffff00CatgirlTracker:|r Unacked day " .. id .. " was dropped before it was retained.")
     return true
 end
 
 function CCT.Ledger.Guard()
     local char = Char()
-    if char == nil or type(char.archive) ~= "table" then
+    if char == nil or type(char.days) ~= "table" or #char.days == 0 then
         return false
     end
     if Bytes(char, 0, {}) <= CHAR_CAP then
         return false
     end
     local state = State()
-    return DropArchive(char, state and state.week or nil)
+    return DropClosed(char, state and state.week or nil)
 end
 
 local function PlanSeq(char, state)
-    local week = state.week
+    local day = state.week
     local mark = Mark(state.counters, state.sub, char.zones, char.senders)
     local sent = char.sent
     local seq = tonumber(state.counters and state.counters.seq) or 1
-    if type(sent) == "table" and sent.week == week and sent.mark ~= mark then
+    if type(sent) == "table" and sent.day == day and sent.mark ~= mark then
         seq = (tonumber(sent.seq) or seq) + 1
         if seq < 1 then
             seq = 1
@@ -262,16 +276,58 @@ local function PlanSeq(char, state)
     return seq, mark
 end
 
-local function SyncSeq(char, state)
-    local seq, mark = PlanSeq(char, state)
-    if seq ~= (tonumber(state.counters and state.counters.seq) or 1) then
-        CCT.State.SetSeq(seq)
-    end
-    return seq, mark
-end
-
 local function ShownHeat(state)
     return math.floor(((tonumber(state and state.heat) or 0) + 0.5))
+end
+
+local function WeekPeriod(state, char)
+    if state ~= nil and IsWeekId(state.week) then
+        return true
+    end
+    if state ~= nil and type(state.counters) == "table" and IsWeekId(state.counters.week) then
+        return true
+    end
+    if char ~= nil and type(char.archive) == "table" and IsWeekId(char.archive.week) then
+        return true
+    end
+    if char ~= nil and IsWeekId(char.droppedWeek) then
+        return true
+    end
+    return false
+end
+
+local function ClearWeekDrops(char)
+    if type(char) ~= "table" then
+        return
+    end
+    if type(char.archive) == "table" and IsWeekId(char.archive.week) then
+        char.archive = nil
+    end
+    if IsWeekId(char.droppedWeek) then
+        char.droppedWeek = nil
+    end
+    if IsWeekId(char.dropSend) then
+        char.dropSend = nil
+    end
+    if IsWeekId(char.dropUntil) then
+        char.dropUntil = nil
+    end
+end
+
+local function ZeroScorecard(state, char, id)
+    for i = 1, #COUNTERS do
+        CCT.State.SetCounter(COUNTERS[i], 0)
+    end
+    CCT.State.SetSeq(1)
+    if char ~= nil then
+        char.zones = {}
+        char.senders = {}
+    end
+    CCT.State.SetWeek(id)
+    local shown = ShownHeat(State() or state)
+    if shown > 0 then
+        CCT.State.SetCounter("heatPeak", shown)
+    end
 end
 
 function CCT.Ledger.EnsureWeek(now)
@@ -279,13 +335,9 @@ function CCT.Ledger.EnsureWeek(now)
         return false
     end
     local stamp = Use(now)
-    local id = WeekId(stamp)
+    local id = DayId(stamp)
     local state = State()
     if id == nil or state == nil then
-        return false
-    end
-    local current = state.week
-    if current == id then
         return false
     end
     local char = Char()
@@ -293,15 +345,32 @@ function CCT.Ledger.EnsureWeek(now)
         return false
     end
     rolling = true
-    if type(current) == "string" and current ~= "" then
-        if type(char.archive) == "table" then
-            DropArchive(char, id)
+    local retire = WeekPeriod(state, char)
+    ClearWeekDrops(char)
+    if retire then
+        ZeroScorecard(state, char, id)
+        Say("|cffffff00CatgirlTracker:|r The weekly scorecard was retired and today starts at zero.")
+        rolling = false
+        CCT.Ledger.Guard()
+        return false
+    end
+    state = State()
+    if state == nil or state.week == id then
+        rolling = false
+        return false
+    end
+    if IsDayId(state.week) then
+        if type(char.days) ~= "table" then
+            char.days = {}
         end
-        local seq = SyncSeq(char, state)
+        if #char.days >= CLOSED_CAP then
+            DropClosed(char, id)
+        end
+        local seq = PlanSeq(char, state)
         local counters = CopyCounters(state.counters)
         counters.seq = seq
-        char.archive = {
-            week = current,
+        char.days[#char.days + 1] = {
+            day = state.week,
             seq = seq,
             counters = counters,
             sub = tonumber(state.sub) or 0,
@@ -310,17 +379,7 @@ function CCT.Ledger.EnsureWeek(now)
         }
         char.sent = nil
     end
-    for i = 1, #COUNTERS do
-        CCT.State.SetCounter(COUNTERS[i], 0)
-    end
-    CCT.State.SetSeq(1)
-    CCT.State.SetWeek(id)
-    char.zones = {}
-    char.senders = {}
-    local shown = ShownHeat(state)
-    if shown > 0 then
-        CCT.State.SetCounter("heatPeak", shown)
-    end
+    ZeroScorecard(state, char, id)
     rolling = false
     CCT.Ledger.Guard()
     return true
@@ -414,9 +473,9 @@ local function SortedNames(map)
     return names
 end
 
-local function LedgerFields(week, seq, counters, sub, dropped)
+local function LedgerFields(day, seq, counters, sub, dropped)
     local fields = {
-        { "week", week },
+        { "day", day },
         { "seq", seq },
     }
     for i = 1, #BEFORE_SUB do
@@ -434,9 +493,9 @@ local function LedgerFields(week, seq, counters, sub, dropped)
     return fields
 end
 
-local function ZoneFields(week, seq, zones)
+local function ZoneFields(day, seq, zones)
     local fields = {
-        { "week", week },
+        { "day", day },
         { "seq", seq },
     }
     local names = SortedNames(zones)
@@ -454,12 +513,12 @@ local function ZoneFields(week, seq, zones)
     return fields
 end
 
-local function PetFields(week, seq, senders)
+local function PetFields(day, seq, senders)
     if type(senders) ~= "table" or #senders == 0 then
         return nil
     end
     local fields = {
-        { "week", week },
+        { "day", day },
         { "seq", seq },
     }
     for i = 1, #senders do
@@ -482,28 +541,35 @@ local function Whisper(target, kind, fields)
     return CCT.Net.Whisper(target, kind, fields) and true or false
 end
 
-local function SendWeek(target, week, seq, counters, sub, zones, senders, dropped)
-    if type(week) ~= "string" or week == "" then
+local function SendDay(target, day, seq, counters, sub, zones, senders, dropped)
+    if not IsDayId(day) then
         return false
     end
-    local sent = Whisper(target, "ledger", LedgerFields(week, seq, counters, sub, dropped))
-    local zonesFields = ZoneFields(week, seq, zones)
+    local ledgerOk = Whisper(target, "ledger", LedgerFields(day, seq, counters, sub, dropped))
+    local zonesFields = ZoneFields(day, seq, zones)
     if zonesFields ~= nil then
-        sent = Whisper(target, "zones", zonesFields) or sent
+        Whisper(target, "zones", zonesFields)
     end
-    local petBody = PetFields(week, seq, senders)
+    local petBody = PetFields(day, seq, senders)
     if petBody ~= nil then
-        sent = Whisper(target, "pets", petBody) or sent
+        Whisper(target, "pets", petBody)
     end
-    return sent
+    return ledgerOk and true or false
 end
 
 local function Dirty(char, state)
     local sent = char.sent
-    if type(sent) ~= "table" or sent.week ~= state.week then
+    if type(sent) ~= "table" or sent.day ~= state.week then
         return true
     end
     return sent.mark ~= Mark(state.counters, state.sub, char.zones, char.senders)
+end
+
+local function DroppedToken(char)
+    if type(char.dropSend) == "string" and char.dropSend ~= "" and type(char.dropUntil) == "string" then
+        return char.dropSend
+    end
+    return nil
 end
 
 function CCT.Ledger.Flush(reason, now)
@@ -524,51 +590,64 @@ function CCT.Ledger.Flush(reason, now)
         flushing = false
         return false
     end
-    local dirty = Dirty(char, state)
-    if reason == "timer" and not dirty and heartbeatSent then
-        flushing = false
-        return false
+    if reason == "timer" then
+        local dirty = Dirty(char, state)
+        if not dirty and heartbeatSent then
+            flushing = false
+            return false
+        end
     end
     if not MasterOnline() then
         if not heldNoted then
             heldNoted = true
-            Say("|cffffff00CatgirlTracker:|r Master is offline. The weekly report is held.")
+            Say("|cffffff00CatgirlTracker:|r Master is offline. The daily report is held.")
         end
     else
         heldNoted = false
     end
     local target = MasterName()
-    local dropped = nil
-    if type(char.dropSend) == "string" and char.dropSend ~= "" and type(char.dropUntil) == "string" then
-        dropped = char.dropSend
-    end
-    local archiveOk = true
-    if type(char.archive) == "table" and type(char.archive.week) == "string" then
-        archiveOk = SendWeek(
-            target,
-            char.archive.week,
-            char.archive.seq or 1,
-            char.archive.counters,
-            char.archive.sub,
-            char.archive.zones,
-            char.archive.senders,
-            dropped
-        ) and true or false
+    local dropped = DroppedToken(char)
+    local any = false
+    if reason == "edge" then
+        queuedClosed = {}
+        local closed = char.days
+        if type(closed) == "table" then
+            for i = 1, #closed do
+                local row = closed[i]
+                if type(row) == "table" and IsDayId(row.day) and queuedClosed[row.day] ~= true then
+                    local queued = SendDay(
+                        target,
+                        row.day,
+                        row.seq or 1,
+                        row.counters,
+                        row.sub,
+                        row.zones,
+                        row.senders,
+                        dropped
+                    )
+                    if queued then
+                        queuedClosed[row.day] = true
+                        any = true
+                    end
+                end
+            end
+        end
     end
     local seq, mark = PlanSeq(char, state)
-    local currentSent = SendWeek(target, state.week, seq, state.counters, state.sub, char.zones, char.senders, dropped) and true or false
+    local currentSent = SendDay(target, state.week, seq, state.counters, state.sub, char.zones, char.senders, dropped)
     if currentSent then
         if seq ~= (tonumber(state.counters and state.counters.seq) or 1) then
             CCT.State.SetSeq(seq)
         end
-        char.sent = { week = state.week, seq = seq, mark = mark }
-        heartbeatSent = archiveOk
+        char.sent = { day = state.week, seq = seq, mark = mark }
+        heartbeatSent = true
+        any = true
     end
     flushing = false
-    if currentSent or (archiveOk and type(char.archive) == "table") then
+    if any then
         CCT.Debug("ledger", 5, string.format("Ledger flush %s seq %s.", tostring(state.week), tostring(seq)))
     end
-    return currentSent or (type(char.archive) == "table" and archiveOk)
+    return any
 end
 
 function CCT.Ledger.NoteMaster()
@@ -591,10 +670,6 @@ end
 
 function CCT.Ledger.LoginFlush()
     CCT.Ledger.NoteMaster()
-    if not loginSent and MasterName() ~= nil and not wasOnline then
-        CCT.Ledger.Flush("edge")
-    end
-    loginSent = true
     return true
 end
 
@@ -620,25 +695,31 @@ function CCT.Ledger.OnAck(sender, parsed)
     if master == nil or not CCT.SameName(sender, master) then
         return false
     end
-    local week = parsed.fields.week
-    local seq = tonumber(parsed.fields.seq) or 0
-    if type(week) ~= "string" or week == "" then
+    local day = parsed.fields.day
+    if type(day) ~= "string" or day == "" then
         return false
     end
+    local seq = tonumber(parsed.fields.seq) or 0
     local char = Char()
     if char == nil then
         return false
     end
-    local dropped = false
-    if type(char.archive) == "table" and char.archive.week == week and seq >= (tonumber(char.archive.seq) or 1) then
-        char.archive = nil
-        dropped = true
+    local removed = false
+    if type(char.days) == "table" then
+        for i = 1, #char.days do
+            local row = char.days[i]
+            if type(row) == "table" and row.day == day and seq >= (tonumber(row.seq) or 1) then
+                table.remove(char.days, i)
+                removed = true
+                break
+            end
+        end
     end
-    if char.dropUntil ~= nil and week == char.dropUntil then
+    if char.dropUntil ~= nil and day == char.dropUntil then
         char.dropSend = nil
         char.dropUntil = nil
     end
-    return dropped
+    return removed
 end
 
 function CCT.Ledger.PushSender(pair)
@@ -676,12 +757,12 @@ function CCT.Ledger.Senders()
     return char.senders
 end
 
-function CCT.Ledger.Archive()
+function CCT.Ledger.Days()
     local char = Char()
-    if char == nil then
-        return nil
+    if char == nil or type(char.days) ~= "table" then
+        return {}
     end
-    return char.archive
+    return char.days
 end
 
 function CCT.Ledger.Dropped()
@@ -689,16 +770,21 @@ function CCT.Ledger.Dropped()
     if char == nil then
         return nil
     end
-    return char.droppedWeek
+    return char.droppedDay
+end
+
+-- Not the store. An old call does not throw.
+function CCT.Ledger.Archive()
+    return nil
 end
 
 function CCT.Ledger.OnLogin(now)
     local stamp = Use(now)
+    queuedClosed = {}
     CCT.Ledger.EnsureWeek(stamp)
     minuteStamp = stamp
     nextMinute = stamp + 60
     lastTimer = stamp
-    loginSent = false
     wasOnline = false
     heartbeatSent = false
     heldNoted = false

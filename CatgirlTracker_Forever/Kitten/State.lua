@@ -34,7 +34,8 @@ local LOCK_BINDS = {
     "bell", "tailbell", "chastitybelt", "chastitybra",
 }
 
-local MINUTE_CAP = 10080
+local SCORE_MINUTE_CAP = 1440
+local LOCK_MINUTE_CAP = 10080
 local EVENT_CAP = 9999
 local MINUTE_COUNTERS = { heelsMin = true, gagMin = true, playMin = true, slackMin = true }
 local EVENT_COUNTERS = {
@@ -199,7 +200,7 @@ end
 
 local function CounterCap(name)
     if MINUTE_COUNTERS[name] then
-        return MINUTE_CAP
+        return SCORE_MINUTE_CAP
     end
     if name == "heatPeak" then
         return 100
@@ -403,7 +404,7 @@ local function NormalizeLocks(state)
             state.locks[key] = nil
             changed = true
         else
-            minutes = ClampInt(minutes, 1, MINUTE_CAP)
+            minutes = ClampInt(minutes, 1, LOCK_MINUTE_CAP)
             unlockAt = math.floor(unlockAt)
             if lock.unlockAt ~= unlockAt or lock.minutes ~= minutes then
                 lock.unlockAt = unlockAt
@@ -979,7 +980,7 @@ function CCT.State.SetLock(bind, minutes)
     if tonumber(minutes) == nil or tonumber(minutes) < 1 then
         return false
     end
-    local stored = ClampInt(minutes, 1, MINUTE_CAP)
+    local stored = ClampInt(minutes, 1, LOCK_MINUTE_CAP)
     state.locks[bind] = {
         unlockAt = CCT.UnixNow() + stored * 60,
         minutes = stored,

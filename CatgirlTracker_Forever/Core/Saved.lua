@@ -26,6 +26,8 @@ function CCT.Saved.Empty()
         owner = {
             kitten = {},
             weeks = {},
+            days = {},
+            droppedDay = {},
         },
         master = {
             kittens = {},
@@ -71,6 +73,12 @@ function CCT.Saved.Repair(db)
     if type(db.owner.weeks) ~= "table" then
         db.owner.weeks = {}
     end
+    if type(db.owner.days) ~= "table" then
+        db.owner.days = {}
+    end
+    if type(db.owner.droppedDay) ~= "table" then
+        db.owner.droppedDay = {}
+    end
     if type(db.master) ~= "table" then
         db.master = {}
     end
@@ -105,6 +113,8 @@ function CCT.Saved.Repair(db)
     RekeyNames(db.owner.kitten)
     RekeyNames(db.owner.weeks)
     RekeyNames(db.owner.closed)
+    RekeyNames(db.owner.days)
+    RekeyNames(db.owner.droppedDay)
     RekeyNames(db.master.kittens)
     return db
 end
@@ -142,6 +152,7 @@ function CCT.Saved.NewChar()
         life = NewLife(),
         archive = nil,
         droppedWeek = nil,
+        days = {},
         nya = { enabled = false },
     }
 end
@@ -177,6 +188,9 @@ local function RepairChar(char)
         char.nya = { enabled = false }
     elseif char.nya.enabled == nil then
         char.nya.enabled = false
+    end
+    if type(char.days) ~= "table" then
+        char.days = {}
     end
     return char
 end

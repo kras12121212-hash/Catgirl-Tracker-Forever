@@ -1,5 +1,5 @@
 -- Owner memory. A command counts only after Success and Ack ok:1.
--- The weekly tally is sent to the Guild Master. Zeros are stored.
+-- The daily tally is sent to the Guild Master. Zeros are stored.
 -- tasks moves only from CCT.Corroboration.CountTasks. There is no OwnerWeek ack.
 
 local ADDON_NAME, CCT = ...
@@ -18,8 +18,13 @@ local TOY_IDS = {
 local STATE_OPS = { gag = true, blind = true, ears = true, mittens = true, heels = true }
 local FLAG_OPS = { jewel = true, leash = true, belt = true, bra = true }
 local SENT_CAP = 50
+local DAY_CAP = 14
 
 local pending = {}
+
+local function IsDayId(id)
+    return type(id) == "string" and id:match("^%d%d%d%d%-%d%d%-%d%d$") ~= nil
+end
 
 local function DB()
     if CCT.Saved and CCT.Saved.Init then
@@ -29,7 +34,7 @@ local function DB()
 end
 
 local function EmptyWeek(id)
-    local row = { week = id, seq = 1, tasks = 0, disc = 0 }
+    local row = { day = id, seq = 1, tasks = 0, disc = 0 }
     for i = 1, #RESTRAINTS do
         row[RESTRAINTS[i] .. "On"] = 0
         row[RESTRAINTS[i] .. "Off"] = 0
@@ -65,18 +70,33 @@ local function WeekRow(name)
     if type(db) ~= "table" or type(name) ~= "string" or name == "" then
         return nil
     end
-    local current = CCT.Week and CCT.Week.Id and CCT.Week.Id() or nil
-    local row = db.owner.weeks[name]
-    if type(row) ~= "table" or (current ~= nil and row.week ~= current) then
-        if type(row) == "table" then
-            if type(db.owner.closed) ~= "table" then
-                db.owner.closed = {}
-            end
-            db.owner.closed[name] = row
-        end
-        row = EmptyWeek(current)
-        db.owner.weeks[name] = row
+    if type(db.owner.days) ~= "table" then
+        db.owner.days = {}
     end
+    if type(db.owner.droppedDay) ~= "table" then
+        db.owner.droppedDay = {}
+    end
+    local current = CCT.Day and CCT.Day.Id and CCT.Day.Id() or nil
+    local list = db.owner.days[name]
+    if type(list) ~= "table" then
+        list = {}
+        db.owner.days[name] = list
+    end
+    local open = list[#list]
+    if type(open) == "table" and current ~= nil and open.day == current then
+        return open
+    end
+    if current == nil and type(open) == "table" then
+        return open
+    end
+    if #list >= DAY_CAP then
+        local dropped = table.remove(list, 1)
+        if type(dropped) == "table" and type(dropped.day) == "string" and dropped.day ~= "" then
+            db.owner.droppedDay[name] = dropped.day
+        end
+    end
+    local row = EmptyWeek(current)
+    list[#list + 1] = row
     return row
 end
 
@@ -323,7 +343,7 @@ function CCT.Corroboration.ApplyState(sender, parsed)
     }
     row.state = {
         rev = rev,
-        week = fields.week,
+        week = fields.day,
         gag = fields.gag or "none",
         gagStage = fields.gag == "inflatable" and (tonumber(fields.gagstage) or 0) or 0,
         blind = fields.blind or "none",
@@ -468,7 +488,7 @@ local KEYS = OwnerKeys()
 
 local function RowFields(row, kitten)
     local fields = {
-        { "week", row.week },
+        { "day", row.day },
         { "seq", tostring(row.seq or 1) },
         { "kitten", kitten },
     }
@@ -481,21 +501,22 @@ end
 
 local function MarkOf(name)
     local db = DB()
-    local closed = db and db.owner and db.owner.closed and db.owner.closed[name]
-    local week = db and db.owner and db.owner.weeks and db.owner.weeks[name]
-    local older = ""
-    local current = ""
-    if type(closed) == "table" then
-        older = tostring(closed.week) .. ":" .. tostring(closed.seq)
+    local list = db and db.owner and db.owner.days and db.owner.days[name]
+    if type(list) ~= "table" then
+        return ""
     end
-    if type(week) == "table" then
-        current = tostring(week.week) .. ":" .. tostring(week.seq)
+    local parts = {}
+    for i = 1, #list do
+        local row = list[i]
+        if type(row) == "table" and IsDayId(row.day) then
+            parts[#parts + 1] = tostring(row.day) .. ":" .. tostring(row.seq)
+        end
     end
-    return older .. "|" .. current
+    return table.concat(parts, "|")
 end
 
 local function WhisperWeek(target, row, kitten)
-    if type(row) ~= "table" or type(row.week) ~= "string" or row.week == "" then
+    if type(row) ~= "table" or not IsDayId(row.day) then
         return false
     end
     if CCT.Net == nil or type(CCT.Net.Whisper) ~= "function" then
@@ -513,9 +534,9 @@ function CCT.Corroboration.Flush(name, force)
     if type(db) ~= "table" or type(db.owner) ~= "table" then
         return false
     end
-    local week = db.owner.weeks and db.owner.weeks[name]
-    local closed = db.owner.closed and db.owner.closed[name]
-    if type(week) ~= "table" and type(closed) ~= "table" then
+    WeekRow(name)
+    local list = db.owner.days and db.owner.days[name]
+    if type(list) ~= "table" or #list == 0 then
         return false
     end
     local mark = MarkOf(name)
@@ -523,11 +544,12 @@ function CCT.Corroboration.Flush(name, force)
         return false
     end
     local sent = false
-    if type(closed) == "table" then
-        sent = WhisperWeek(master, closed, name) or sent
-    end
-    if type(week) == "table" then
-        sent = WhisperWeek(master, week, name) or sent
+    if force == true then
+        for i = 1, #list do
+            sent = WhisperWeek(master, list[i], name) or sent
+        end
+    else
+        sent = WhisperWeek(master, list[#list], name) or sent
     end
     if sent then
         sentMark[name] = mark
@@ -541,18 +563,9 @@ function CCT.Corroboration.FlushAll(force)
         return false
     end
     local any = false
-    local seen = {}
-    if type(db.owner.weeks) == "table" then
-        for name in pairs(db.owner.weeks) do
-            seen[name] = true
+    if type(db.owner.days) == "table" then
+        for name in pairs(db.owner.days) do
             any = CCT.Corroboration.Flush(name, force) or any
-        end
-    end
-    if type(db.owner.closed) == "table" then
-        for name in pairs(db.owner.closed) do
-            if not seen[name] then
-                any = CCT.Corroboration.Flush(name, force) or any
-            end
         end
     end
     return any

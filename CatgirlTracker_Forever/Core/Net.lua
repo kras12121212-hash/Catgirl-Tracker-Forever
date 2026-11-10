@@ -6,7 +6,7 @@
 local ADDON_NAME, CCT = ...
 
 CCT.Net = {}
-CCT.Week = {}
+CCT.Day = {}
 
 local MAX_BYTES = 255
 local RELIABLE_CAP = 72
@@ -82,16 +82,16 @@ local KIND_RANK = {
 local HEADER_KEYS = {
     state = { "rev" },
     pos = { "t" },
-    ledger = { "week", "seq" },
-    zones = { "week", "seq" },
-    pets = { "week", "seq" },
-    ownerweek = { "week", "seq", "kitten" },
+    ledger = { "day", "week", "seq" },
+    zones = { "day", "week", "seq" },
+    pets = { "day", "week", "seq" },
+    ownerweek = { "day", "week", "seq", "kitten" },
     cmd = { "op", "cid", "id", "idx" },
     maid = { "op", "cid", "id", "idx" },
     maiditem = { "op", "cid", "id", "idx" },
     maidtext = { "op", "cid", "id", "idx" },
     ack = { "op", "cid" },
-    ledgerack = { "week", "seq" },
+    ledgerack = { "day", "week", "seq" },
     prox = {},
 }
 
@@ -164,73 +164,62 @@ function CCT.Net.RetryDelay(kind)
     return 1.5 + (math.random() * 0.5)
 end
 
-local function WeekParts(id)
-    if type(id) ~= "string" then
-        return nil, nil
+local function IsDayId(id)
+    return type(id) == "string" and id:match("^%d%d%d%d%-%d%d%-%d%d$") ~= nil
+end
+
+-- Noon plus half a day, so a one-hour DST step cannot turn adjacent dates into 0.
+local function DayNumber(id)
+    if not IsDayId(id) or type(time) ~= "function" then
+        return nil
     end
-    local year, week = id:match("^(%d%d%d%d)%-W(%d%d)$")
-    return tonumber(year), tonumber(week)
+    local y, m, d = id:match("^(%d%d%d%d)%-(%d%d)%-(%d%d)$")
+    local noon = time({ year = tonumber(y), month = tonumber(m), day = tonumber(d), hour = 12 })
+    local epoch = time({ year = 2020, month = 1, day = 1, hour = 12 })
+    if type(noon) ~= "number" or type(epoch) ~= "number" then
+        return nil
+    end
+    return math.floor((noon - epoch) / 86400 + 0.5)
 end
 
-CCT.Week.Parts = WeekParts
-
-local function ShiftDays(year, month, day, delta)
-    return date("*t", time({
-        year = year,
-        month = month,
-        day = day + delta,
-        hour = 12,
-    }))
-end
-
-function CCT.Week.Id(now)
+-- Local calendar day. date("*t") is already the machine zone. Not UTC.
+function CCT.Day.Id(now)
     if type(date) ~= "function" or type(time) ~= "function" then
         return nil
     end
     local stamp = date("*t", now or time())
-    if type(stamp) ~= "table" then
+    if type(stamp) ~= "table" or stamp.year == nil then
         return nil
     end
-    local isoDow = (stamp.wday == 1) and 7 or (stamp.wday - 1)
-    local thursday = ShiftDays(stamp.year, stamp.month, stamp.day, 4 - isoDow)
-    local jan4 = date("*t", time({ year = thursday.year, month = 1, day = 4, hour = 12 }))
-    local jan4Dow = (jan4.wday == 1) and 7 or (jan4.wday - 1)
-    local week1 = ShiftDays(jan4.year, jan4.month, jan4.day, 1 - jan4Dow)
-    local thursdayNoon = time({
-        year = thursday.year,
-        month = thursday.month,
-        day = thursday.day,
-        hour = 12,
-    })
-    local week1Noon = time({
-        year = week1.year,
-        month = week1.month,
-        day = week1.day,
-        hour = 12,
-    })
-    local week = math.floor((thursdayNoon - week1Noon) / 604800) + 1
-    return string.format("%04d-W%02d", thursday.year, week)
+    return string.format("%04d-%02d-%02d", stamp.year, stamp.month, stamp.day)
 end
 
-function CCT.Week.Cmp(a, b)
-    local ay, aw = WeekParts(a)
-    local by, bw = WeekParts(b)
-    if ay == nil and by == nil then
+-- -1 if a is older, 0 if equal, 1 if a is newer. A non-day is older than a day.
+function CCT.Day.Cmp(a, b)
+    local an, bn = DayNumber(a), DayNumber(b)
+    if an == nil and bn == nil then
         return 0
     end
-    if ay == nil then
+    if an == nil then
         return -1
     end
-    if by == nil then
+    if bn == nil then
         return 1
     end
-    if ay ~= by then
-        return ay < by and -1 or 1
+    if an == bn then
+        return 0
     end
-    if aw ~= bw then
-        return aw < bw and -1 or 1
+    return an < bn and -1 or 1
+end
+
+-- Nil unless both ids number. A nil is not greater than 13 and does not remove a row.
+function CCT.Day.DaysBefore(todayId, rowId)
+    local today = DayNumber(todayId)
+    local row = DayNumber(rowId)
+    if today == nil or row == nil then
+        return nil
     end
-    return 0
+    return today - row
 end
 
 local function NormKind(kind)
@@ -539,12 +528,15 @@ local function TargetKey(name)
 end
 
 local function SnapshotKey(target, kind, fields)
-    local week = nil
+    local period = nil
     if WEEK_KINDS[kind] then
-        local raw = Lookup(fields, "week")
-        week = raw ~= nil and tostring(raw) or ""
+        local raw = Lookup(fields, "day")
+        if raw == nil then
+            raw = Lookup(fields, "week")
+        end
+        period = raw ~= nil and tostring(raw) or ""
     end
-    return target:lower() .. "|" .. kind .. "|" .. (week or ""), week
+    return target:lower() .. "|" .. kind .. "|" .. (period or ""), period
 end
 
 local function ProxCount()
@@ -905,23 +897,9 @@ local function DropTargetProx(target)
 end
 
 local function SnapshotBetter(a, b)
-    local ay, aw = WeekParts(a.week)
-    local by, bw = WeekParts(b.week)
-    ay = ay or -1
-    aw = aw or -1
-    by = by or -1
-    bw = bw or -1
-    if a.week == nil then
-        ay, aw = -1, -1
-    end
-    if b.week == nil then
-        by, bw = -1, -1
-    end
-    if ay ~= by then
-        return ay < by
-    end
-    if aw ~= bw then
-        return aw < bw
+    local cmp = CCT.Day.Cmp(a.week, b.week)
+    if cmp ~= 0 then
+        return cmp < 0
     end
     local ar = KIND_RANK[a.kind] or 9
     local br = KIND_RANK[b.kind] or 9
@@ -1380,6 +1358,16 @@ local function Dispatch(parsed, sender, channelName)
     end
 end
 
+local function PeriodField(fields)
+    if type(fields) ~= "table" then
+        return nil
+    end
+    if fields.day ~= nil and tostring(fields.day) ~= "" then
+        return fields.day
+    end
+    return fields.week
+end
+
 local function BufferIdentity(parsed, sender)
     local fields = parsed.fields
     if parsed.kind == "state" then
@@ -1389,10 +1377,10 @@ local function BufferIdentity(parsed, sender)
         return "pos|" .. sender:lower() .. "|" .. tostring(fields.t)
     end
     if parsed.kind == "ledger" or parsed.kind == "zones" or parsed.kind == "pets" then
-        return parsed.kind .. "|" .. sender:lower() .. "|" .. tostring(fields.week) .. "|" .. tostring(fields.seq)
+        return parsed.kind .. "|" .. sender:lower() .. "|" .. tostring(PeriodField(fields)) .. "|" .. tostring(fields.seq)
     end
     if parsed.kind == "ownerweek" then
-        return "ownerweek|" .. sender:lower() .. "|" .. tostring(fields.kitten) .. "|" .. tostring(fields.week) .. "|" .. tostring(fields.seq)
+        return "ownerweek|" .. sender:lower() .. "|" .. tostring(fields.kitten) .. "|" .. tostring(PeriodField(fields)) .. "|" .. tostring(fields.seq)
     end
     if parsed.kind == "cmd" and fields.id ~= nil and fields.idx ~= nil then
         return "cmd|" .. sender:lower() .. "|" .. tostring(fields.id) .. "|" .. tostring(fields.idx)

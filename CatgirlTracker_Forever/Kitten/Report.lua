@@ -362,7 +362,7 @@ local function KittenLife()
 end
 
 -- Counts for the owner stats. The timestamp list stays on the kitten.
--- orgWeek is the scorecard week counter, which survives the fifty-stamp cap.
+-- orgWeek is the scorecard orgasm counter, which survives the fifty-stamp cap.
 local function OrgasmWire(state)
     local life = KittenLife()
     local list = type(life) == "table" and life.orgasms or nil
@@ -486,12 +486,12 @@ function CCT.Report.StateFields(state)
     if type(state) ~= "table" then
         return fields
     end
-    local week = state.week
-    if (type(week) ~= "string" or week == "") and CCT.Week and CCT.Week.Id then
-        week = CCT.Week.Id()
+    local day = state.week
+    if (type(day) ~= "string" or day == "") and CCT.Day and CCT.Day.Id then
+        day = CCT.Day.Id()
     end
     Add(fields, "rev", tonumber(state.rev) or 0)
-    Add(fields, "week", week or "")
+    Add(fields, "day", day or "")
     Add(fields, "gag", state.gag or "none")
     if state.gag == "inflatable" then
         Add(fields, "gagStage", tonumber(state.gagStage) or 0)
@@ -743,6 +743,11 @@ end
 
 local function OnState(state)
     if type(state) ~= "table" then
+        return
+    end
+    -- EnsureWeek zeros the open day through CCT.State. The midnight roll sends once, after that.
+    if CCT.Ledger and type(CCT.Ledger.Rolling) == "function" and CCT.Ledger.Rolling() then
+        RememberBaseline(state)
         return
     end
     local fingerprint = Fingerprint(state)

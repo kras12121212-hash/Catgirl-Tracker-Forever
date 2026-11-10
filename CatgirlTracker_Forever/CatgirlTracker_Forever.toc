@@ -1,6 +1,6 @@
 ## Interface: 16001
 ## Title: CatgirlTracker Forever
-## Notes: Owner controls and a weekly kitten scorecard. No guild transcript.
+## Notes: Owner controls and a local day scorecard of 14 rows. No guild transcript.
 ## Version: 2.0.0
 ## SavedVariables: CatgirlTrackerDB
 

@@ -1,14 +1,17 @@
--- Guild Master scorecard. Two rows per kitten, written and not drawn.
+-- Guild Master scorecard. Fourteen day rows per kitten, written and not drawn.
 -- No window and no copy box. tasks is stored. PR 8 is the only increment.
+-- applied, previous, droppedWeek, rotatedWeek, and storedWeeks may still sit on
+-- an old record. This file does not read them and does not delete them.
 
 local ADDON_NAME, CCT = ...
 
 CCT.Store = {}
 
 local KITTEN_CAP = 40
-local MASTER_CAP = 512 * 1024
-local STORED_CAP = 16
-local MINUTE_CAP = 10080
+local MASTER_CAP = 4 * 1024 * 1024
+local STORED_CAP = 28
+local DAY_CAP = 14
+local MINUTE_CAP = 1440
 local EVENT_CAP = 9999
 local SENDER_CAP = 20
 
@@ -75,7 +78,11 @@ local function Stamp(now)
     return 0
 end
 
-local function ValidWeek(id)
+local function IsDayId(id)
+    return type(id) == "string" and id:match("^%d%d%d%d%-%d%d%-%d%d$") ~= nil
+end
+
+local function IsWeekId(id)
     return type(id) == "string" and id:match("^%d%d%d%d%-W%d%d$") ~= nil
 end
 
@@ -185,9 +192,9 @@ local function FindRecord(kittens, name)
     return nil, nil
 end
 
-local function Fresh(week, now)
+local function Fresh(day, now)
     return {
-        week = week,
+        day = day,
         seq = 0,
         at = now,
         fields = {},
@@ -197,14 +204,21 @@ local function Fresh(week, now)
     }
 end
 
+local function DayCmp(a, b)
+    if CCT.Day == nil or type(CCT.Day.Cmp) ~= "function" then
+        return 0
+    end
+    return CCT.Day.Cmp(a, b)
+end
+
 local function Remember(record, id)
-    if not ValidWeek(id) then
+    if type(id) ~= "string" or id == "" or IsWeekId(id) then
         return
     end
-    if type(record.storedWeeks) ~= "table" then
-        record.storedWeeks = {}
+    if type(record.storedDays) ~= "table" then
+        record.storedDays = {}
     end
-    local list = record.storedWeeks
+    local list = record.storedDays
     for i = 1, #list do
         if list[i] == id then
             return
@@ -217,38 +231,34 @@ local function Remember(record, id)
 end
 
 local function Seed(record)
-    if type(record.storedWeeks) == "table" and #record.storedWeeks > 0 then
+    if type(record.storedDays) == "table" and #record.storedDays > 0 then
         return
     end
-    local list = {}
-    if type(record.previous) == "table" and ValidWeek(record.previous.week) then
-        list[#list + 1] = record.previous.week
+    if type(record.days) ~= "table" then
+        record.days = {}
     end
-    if type(record.applied) == "table" and ValidWeek(record.applied.week) then
-        local week = record.applied.week
-        if list[#list] ~= week then
-            list[#list + 1] = week
+    local ids = {}
+    for key, row in pairs(record.days) do
+        if type(row) == "table" then
+            local id = nil
+            if type(row.day) == "string" and row.day ~= "" then
+                id = row.day
+            elseif type(key) == "string" then
+                id = key
+            end
+            if id ~= nil and not IsWeekId(id) then
+                ids[#ids + 1] = id
+            end
         end
     end
-    record.storedWeeks = list
-end
-
-local function Rotate(record, id)
-    if not ValidWeek(id) then
-        return
-    end
-    record.rotatedWeek = id
-    if CCT.Debug then
-        CCT.Debug(
-            "scorecard-rotate",
-            0,
-            "Closed week " .. id .. " rotated off the previous row. It had been retained."
-        )
-    end
+    table.sort(ids, function(a, b)
+        return DayCmp(a, b) < 0
+    end)
+    record.storedDays = ids
 end
 
 local function Stored(record, id)
-    local list = record.storedWeeks
+    local list = record.storedDays
     if type(list) ~= "table" then
         return false
     end
@@ -260,108 +270,122 @@ local function Stored(record, id)
     return false
 end
 
+local function NoteRotated(record, id)
+    if type(id) ~= "string" or id == "" then
+        return
+    end
+    record.rotatedDay = id
+    if CCT.Debug then
+        CCT.Debug(
+            "scorecard-rotate",
+            0,
+            "Closed day " .. id .. " rotated off the scorecard. It had been retained."
+        )
+    end
+end
+
+local function OldestKey(days)
+    local best = nil
+    for key, row in pairs(days) do
+        if type(row) == "table" and type(key) == "string" then
+            if best == nil or DayCmp(key, best) < 0 then
+                best = key
+            end
+        end
+    end
+    return best
+end
+
+local function RowId(key, row)
+    if type(row) == "table" and type(row.day) == "string" and row.day ~= "" then
+        return row.day
+    end
+    if type(key) == "string" then
+        return key
+    end
+    return nil
+end
+
+-- A nil DaysBefore skips that id. One bad id does not abort the kitten.
+local function Sweep(record, now)
+    if type(record.days) ~= "table" then
+        record.days = {}
+        return
+    end
+    if CCT.Day == nil or type(CCT.Day.Id) ~= "function" or type(CCT.Day.DaysBefore) ~= "function" then
+        return
+    end
+    local today = CCT.Day.Id(now)
+    if not IsDayId(today) then
+        return
+    end
+    local remove = {}
+    for key, row in pairs(record.days) do
+        if type(row) == "table" then
+            local id = RowId(key, row)
+            local before = id ~= nil and CCT.Day.DaysBefore(today, id) or nil
+            if type(before) == "number" and before > 13 then
+                remove[#remove + 1] = key
+            end
+        end
+    end
+    for i = 1, #remove do
+        local key = remove[i]
+        local row = record.days[key]
+        local id = RowId(key, row) or key
+        record.days[key] = nil
+        NoteRotated(record, id)
+    end
+end
+
+local function Choose(record, day, now)
+    if type(record.days) ~= "table" then
+        record.days = {}
+    end
+    local days = record.days
+    if type(days[day]) == "table" then
+        return days[day]
+    end
+    local count = 0
+    for _, row in pairs(days) do
+        if type(row) == "table" then
+            count = count + 1
+        end
+    end
+    if count >= DAY_CAP then
+        local oldest = OldestKey(days)
+        if oldest ~= nil then
+            days[oldest] = nil
+            NoteRotated(record, oldest)
+        end
+    end
+    days[day] = Fresh(day, now)
+    Remember(record, day)
+    return days[day]
+end
+
 local function NoteDropped(record, parsed)
     local fields = parsed and parsed.fields
     local id = fields and fields.dropped
-    if not ValidWeek(id) then
+    if not IsDayId(id) then
         return
     end
     if Stored(record, id) then
         return
     end
-    record.droppedWeek = id
+    record.droppedDay = id
     if CCT.Debug then
         CCT.Debug("scorecard-drop", 0, "Unacked " .. id .. " was dropped before it was retained.")
     end
 end
 
-local function ThursdayNoon(id)
-    if not ValidWeek(id) or type(date) ~= "function" or type(time) ~= "function" then
-        return nil
+local function TooOld(day, now)
+    if CCT.Day == nil or type(CCT.Day.Id) ~= "function" or type(CCT.Day.DaysBefore) ~= "function" then
+        return false
     end
-    local year, week = id:match("^(%d%d%d%d)%-W(%d%d)$")
-    year = tonumber(year)
-    week = tonumber(week)
-    if year == nil or week == nil then
-        return nil
-    end
-    local jan4 = date("*t", time({ year = year, month = 1, day = 4, hour = 12 }))
-    if type(jan4) ~= "table" or jan4.wday == nil then
-        return nil
-    end
-    local isoDow = (jan4.wday == 1) and 7 or (jan4.wday - 1)
-    local noon = time({
-        year = year,
-        month = 1,
-        day = 4 + (4 - isoDow) + (week - 1) * 7,
-        hour = 12,
-    })
-    if type(noon) ~= "number" then
-        return nil
-    end
-    return noon
-end
-
-local function WeeksAhead(newer, older)
-    local left = ThursdayNoon(newer)
-    local right = ThursdayNoon(older)
-    if left == nil or right == nil then
-        return 0
-    end
-    return math.floor((left - right) / 604800)
-end
-
-local function Age(record, now)
-    local previous = record.previous
-    if type(previous) ~= "table" or not ValidWeek(previous.week) then
-        return
-    end
-    if CCT.Week == nil or type(CCT.Week.Id) ~= "function" then
-        return
-    end
-    local localWeek = CCT.Week.Id(now)
-    if not ValidWeek(localWeek) then
-        return
-    end
-    if WeeksAhead(localWeek, previous.week) >= 2 then
-        Rotate(record, previous.week)
-        record.previous = nil
-    end
-end
-
-local function Choose(record, week, now)
-    Seed(record)
-    local applied = record.applied
-    if type(applied) ~= "table" then
-        record.applied = Fresh(week, now)
-        Remember(record, week)
-        return record.applied
-    end
-    local cmp = CCT.Week.Cmp(week, applied.week)
-    if cmp > 0 then
-        if type(record.previous) == "table" then
-            Rotate(record, record.previous.week)
-        end
-        record.previous = applied
-        record.applied = Fresh(week, now)
-        Remember(record, week)
-        return record.applied
-    end
-    if cmp == 0 then
-        return applied
-    end
-    if type(record.previous) == "table" and CCT.Week.Cmp(week, record.previous.week) == 0 then
-        return record.previous
-    end
-    if type(record.previous) ~= "table" or CCT.Week.Cmp(week, record.previous.week) > 0 then
-        if type(record.previous) == "table" then
-            Rotate(record, record.previous.week)
-        end
-        record.previous = Fresh(week, now)
-        Remember(record, week)
-        return record.previous
-    end
-    return nil
+    local today = CCT.Day.Id(now)
+    local before = CCT.Day.DaysBefore(today, day)
+    return type(before) == "number" and before > 13
 end
 
 local function Field(parsed, name)
@@ -468,21 +492,21 @@ local function ApplyPets(row, parsed, now)
 end
 
 local function ApplyOwner(row, parsed, now)
-    if type(row.owner) ~= "table" or row.owner.week ~= row.week then
-        row.owner = { week = row.week, seq = 0, at = now }
+    if type(row.owner) ~= "table" or row.owner.day ~= row.day then
+        row.owner = { day = row.day, seq = 0, at = now }
     end
     local owner = row.owner
     local seq = tonumber(Field(parsed, "seq")) or 0
     if seq < (tonumber(owner.seq) or 0) then
         return false
     end
-    for lower, name in pairs(OWNER_BY_LOWER) do
-        local value = Field(parsed, lower)
+    for _, name in pairs(OWNER_BY_LOWER) do
+        local value = Field(parsed, name)
         if value ~= nil then
             owner[name] = ClampOwner(value)
         end
     end
-    owner.week = row.week
+    owner.day = row.day
     owner.seq = seq
     owner.at = now
     row.at = now
@@ -494,19 +518,23 @@ local function Ack(sender, row)
         return false
     end
     return CCT.Net.Whisper(sender, "ledgerack", {
-        { "week", row.week },
+        { "day", row.day },
         { "seq", tostring(row.seq) },
     }) and true or false
 end
 
 local function BlankRecord()
     return {
-        applied = nil,
-        previous = nil,
-        droppedWeek = nil,
-        rotatedWeek = nil,
-        storedWeeks = {},
+        days = {},
+        droppedDay = nil,
+        rotatedDay = nil,
+        storedDays = {},
     }
+end
+
+local function MaintainOne(record, stamp)
+    Seed(record)
+    Sweep(record, stamp)
 end
 
 function CCT.Store.Maintain(now)
@@ -521,8 +549,7 @@ function CCT.Store.Maintain(now)
     local stamp = Stamp(now)
     for _, record in pairs(kittens) do
         if type(record) == "table" then
-            Seed(record)
-            Age(record, stamp)
+            pcall(MaintainOne, record, stamp)
         end
     end
     return true
@@ -536,8 +563,8 @@ function CCT.Store.Accept(kind, sender, parsed, now)
     if norm ~= "ledger" and norm ~= "zones" and norm ~= "pets" and norm ~= "ownerweek" then
         return false
     end
-    local week = Field(parsed, "week")
-    if not ValidWeek(week) then
+    local day = Field(parsed, "day")
+    if not IsDayId(day) then
         return false
     end
     local kitten = sender
@@ -574,7 +601,7 @@ function CCT.Store.Accept(kind, sender, parsed, now)
             return false
         end
         if Bytes(db.master, 0, {}) >= MASTER_CAP then
-            WarnOnce(kitten, "|cffffff00CatgirlTracker:|r The scorecard file is over 512 KB. " .. kitten .. " was not added.")
+            WarnOnce(kitten, "|cffffff00CatgirlTracker:|r The scorecard file is over 4 MB. " .. kitten .. " was not added.")
             return false
         end
         record = BlankRecord()
@@ -582,8 +609,11 @@ function CCT.Store.Accept(kind, sender, parsed, now)
         fresh = true
     end
     Seed(record)
-    Age(record, stamp)
-    local row = Choose(record, week, stamp)
+    Sweep(record, stamp)
+    if TooOld(day, stamp) then
+        return false
+    end
+    local row = Choose(record, day, stamp)
     if row == nil then
         return false
     end

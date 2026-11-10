@@ -1,7 +1,7 @@
 -- Submissiveness from heel levels, denials since local midnight, today's orgasms, and binds.
 -- The reachable bind maximum is 20. The value is written with CCT.State.SetSub.
 -- The bar is shown only when this character has an owner.
--- A new local day asks CCT.Report to send the snapshot.
+-- A new local day rolls the scorecard, then asks CCT.Report to send the snapshot.
 -- This file does not send addon messages. It does not move feature state.
 
 local ADDON_NAME, CCT = ...
@@ -417,8 +417,13 @@ function CCT.Submissiveness.Recompute(now)
     end
     UpdateBar(written)
     computing = false
-    if rolled and CCT.Report and type(CCT.Report.SendState) == "function" then
-        CCT.Report.SendState()
+    if rolled then
+        if CCT.Ledger and type(CCT.Ledger.EnsureWeek) == "function" then
+            CCT.Ledger.EnsureWeek(now)
+        end
+        if CCT.Report and type(CCT.Report.SendState) == "function" then
+            CCT.Report.SendState()
+        end
     end
     return written
 end
