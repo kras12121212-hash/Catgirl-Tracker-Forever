@@ -31,6 +31,7 @@ local WIRE_NAME = {
     ledger = "Ledger",
     zones = "Zones",
     pets = "Pets",
+    worn = "Worn",
     ledgerack = "LedgerAck",
     ownerweek = "OwnerWeek",
 }
@@ -49,6 +50,7 @@ KIND_FROM_WIRE.Prox = "prox"
 KIND_FROM_WIRE.Ledger = "ledger"
 KIND_FROM_WIRE.Zones = "zones"
 KIND_FROM_WIRE.Pets = "pets"
+KIND_FROM_WIRE.Worn = "worn"
 KIND_FROM_WIRE.LedgerAck = "ledgerack"
 KIND_FROM_WIRE.OwnerWeek = "ownerweek"
 
@@ -76,7 +78,8 @@ local KIND_RANK = {
     ledger = 3,
     zones = 4,
     pets = 5,
-    ownerweek = 6,
+    worn = 6,
+    ownerweek = 7,
 }
 
 local HEADER_KEYS = {
@@ -85,6 +88,7 @@ local HEADER_KEYS = {
     ledger = { "day", "week", "seq" },
     zones = { "day", "week", "seq" },
     pets = { "day", "week", "seq" },
+    worn = { "day", "week", "seq" },
     ownerweek = { "day", "week", "seq", "kitten" },
     cmd = { "op", "cid", "id", "idx" },
     maid = { "op", "cid", "id", "idx" },
@@ -104,9 +108,9 @@ local USER_KEYS = {
     sender = true,
 }
 
-local MANY_KEYS = { lk = true, ty = true, z = true, p = true, h = true }
+local MANY_KEYS = { lk = true, ty = true, z = true, p = true, h = true, w = true }
 local NO_SPLIT = { prox = true, ack = true, ledgerack = true }
-local WEEK_KINDS = { ledger = true, zones = true, pets = true, ownerweek = true }
+local WEEK_KINDS = { ledger = true, zones = true, pets = true, worn = true, ownerweek = true }
 local RELIABLE = {
     cmd = true,
     ack = true,
@@ -1265,6 +1269,14 @@ local function SplitMany(key, remainder)
         end
         return { action = action, sender = sender and DecodeUser(sender) or nil, raw = remainder }
     end
+    if key == "w" then
+        local id, minutes = tostring(remainder):match("^(.-):(.*)$")
+        if id == nil then
+            id = remainder
+            minutes = nil
+        end
+        return { id = DecodeUser(id), minutes = tonumber(minutes), raw = remainder }
+    end
     if key == "h" then
         local mapID, x, y, stamp = tostring(remainder):match("^([^:]+):([^:]+):([^:]+):([^:]+)$")
         return {
@@ -1376,7 +1388,7 @@ local function BufferIdentity(parsed, sender)
     if parsed.kind == "pos" then
         return "pos|" .. sender:lower() .. "|" .. tostring(fields.t)
     end
-    if parsed.kind == "ledger" or parsed.kind == "zones" or parsed.kind == "pets" then
+    if parsed.kind == "ledger" or parsed.kind == "zones" or parsed.kind == "pets" or parsed.kind == "worn" then
         return parsed.kind .. "|" .. sender:lower() .. "|" .. tostring(PeriodField(fields)) .. "|" .. tostring(fields.seq)
     end
     if parsed.kind == "ownerweek" then

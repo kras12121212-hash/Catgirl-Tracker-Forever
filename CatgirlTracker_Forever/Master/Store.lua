@@ -18,7 +18,7 @@ local SENDER_CAP = 20
 local LEDGER_FIELDS = {
     "heelsMin", "gagMin", "tasks", "heatPeak", "orgasm", "deny", "playMin", "sub",
     "pets", "hugs", "kisses", "spanks", "earPinch", "slack", "slackMin",
-    "napOk", "napEarly", "napOver", "napMiss",
+    "napOk", "napEarly", "napOver", "napMiss", "petMiss", "petMin",
 }
 
 local RESTRAINTS = {
@@ -42,6 +42,19 @@ for i = 1, #TOY_IDS do
 end
 OWNER_FIELDS[#OWNER_FIELDS + 1] = "tasks"
 OWNER_FIELDS[#OWNER_FIELDS + 1] = "disc"
+
+local WORN_SET = {
+    blind = true, ears = true, mittens = true, bell = true, tail = true,
+    jewel = true, belt = true, bra = true, leash = true,
+}
+if CCT.State and type(CCT.State.Toys) == "table" then
+    for i = 1, #CCT.State.Toys do
+        local id = CCT.State.Toys[i].id
+        if type(id) == "string" then
+            WORN_SET[id] = true
+        end
+    end
+end
 
 local LEDGER_BY_LOWER = {}
 for i = 1, #LEDGER_FIELDS do
@@ -130,7 +143,7 @@ local function ClampLedger(name, value)
     local cap = EVENT_CAP
     if name == "heatPeak" or name == "sub" then
         cap = 100
-    elseif name == "heelsMin" or name == "gagMin" or name == "playMin" or name == "slackMin" then
+    elseif name == "heelsMin" or name == "gagMin" or name == "playMin" or name == "slackMin" or name == "petMin" then
         cap = MINUTE_CAP
     end
     if n > cap then
@@ -491,6 +504,30 @@ local function ApplyPets(row, parsed, now)
     return true
 end
 
+local function ApplyWorn(row, parsed, now)
+    local seq = TakeSeq(row, parsed)
+    if seq == nil then
+        return false
+    end
+    local worn = {}
+    local rows = parsed.many and parsed.many.w or nil
+    if type(rows) == "table" then
+        for i = 1, #rows do
+            local item = rows[i]
+            if type(item) == "table" and type(item.id) == "string" and WORN_SET[item.id] then
+                local minutes = ClampMinute(item.minutes)
+                if minutes > 0 then
+                    worn[item.id] = minutes
+                end
+            end
+        end
+    end
+    row.worn = worn
+    row.seq = seq
+    row.at = now
+    return true
+end
+
 local function ApplyOwner(row, parsed, now)
     if type(row.owner) ~= "table" or row.owner.day ~= row.day then
         row.owner = { day = row.day, seq = 0, at = now }
@@ -560,7 +597,7 @@ function CCT.Store.Accept(kind, sender, parsed, now)
         return false
     end
     local norm = type(kind) == "string" and kind:lower() or ""
-    if norm ~= "ledger" and norm ~= "zones" and norm ~= "pets" and norm ~= "ownerweek" then
+    if norm ~= "ledger" and norm ~= "zones" and norm ~= "pets" and norm ~= "worn" and norm ~= "ownerweek" then
         return false
     end
     local day = Field(parsed, "day")
@@ -624,6 +661,8 @@ function CCT.Store.Accept(kind, sender, parsed, now)
         applied = ApplyZones(row, parsed, stamp)
     elseif norm == "pets" then
         applied = ApplyPets(row, parsed, stamp)
+    elseif norm == "worn" then
+        applied = ApplyWorn(row, parsed, stamp)
     else
         applied = ApplyOwner(row, parsed, stamp)
     end
@@ -687,6 +726,7 @@ if CCT.Net and type(CCT.Net.On) == "function" then
     CCT.Net.On("ledger", OnPart("ledger"))
     CCT.Net.On("zones", OnPart("zones"))
     CCT.Net.On("pets", OnPart("pets"))
+    CCT.Net.On("worn", OnPart("worn"))
     CCT.Net.On("ownerweek", OnPart("ownerweek"))
 end
 

@@ -42,7 +42,6 @@ local corrSrc = read(addon .. "/Owner/Corroboration.lua")
 
 check("char cap stays 262144", ledgerSrc:find("CHAR_CAP = 262144", 1, true) ~= nil)
 check("no webhook and no scorecard frame", storeSrc:find("webhook", 1, true) == nil and storeSrc:find("http", 1, true) == nil and storeSrc:find("CreateFontString", 1, true) == nil and corrSrc:find("webhook", 1, true) == nil and corrSrc:find("CreateFontString", 1, true) == nil)
-check("pr9 does not add pet counters", ledgerSrc:find("petMiss", 1, true) == nil and ledgerSrc:find("petMin", 1, true) == nil)
 
 local frames = {}
 local lines = {}

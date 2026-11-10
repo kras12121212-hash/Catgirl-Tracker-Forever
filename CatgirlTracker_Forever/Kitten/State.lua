@@ -37,11 +37,12 @@ local LOCK_BINDS = {
 local SCORE_MINUTE_CAP = 1440
 local LOCK_MINUTE_CAP = 10080
 local EVENT_CAP = 9999
-local MINUTE_COUNTERS = { heelsMin = true, gagMin = true, playMin = true, slackMin = true }
+local MINUTE_COUNTERS = { heelsMin = true, gagMin = true, playMin = true, slackMin = true, petMin = true }
 local EVENT_COUNTERS = {
     tasks = true, orgasm = true, deny = true, pets = true, hugs = true,
     kisses = true, spanks = true, earPinch = true, slack = true,
     napOk = true, napEarly = true, napOver = true, napMiss = true,
+    petMiss = true,
 }
 
 local PERSISTED = {
@@ -135,6 +136,8 @@ local function EmptyCounters()
         napEarly = 0,
         napOver = 0,
         napMiss = 0,
+        petMiss = 0,
+        petMin = 0,
     }
 end
 

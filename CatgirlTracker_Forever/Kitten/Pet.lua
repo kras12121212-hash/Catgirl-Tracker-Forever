@@ -3,7 +3,8 @@
 -- The summoned flag follows that cosmetic cat, not the click.
 -- A hunter pet is ignored. While the player is dead the button asks to summon again.
 -- Every 10 minutes, a missing cat warns once. The next check sends the forgot line.
--- That line is not a ledger row. Macro edits wait for PLAYER_REGEN_ENABLED.
+-- That send increments petMiss once. The line itself is not a stored row.
+-- Macro edits wait for PLAYER_REGEN_ENABLED.
 -- This file does not move feature state.
 
 local ADDON_NAME, CCT = ...
@@ -606,6 +607,9 @@ function CCT.Pet.Step()
     local sent = Announce("PET_SUMMON_BAD")
     if sent then
         forgotSent = true
+        if CCT.State and type(CCT.State.AddCounter) == "function" then
+            CCT.State.AddCounter("petMiss", 1)
+        end
     end
     return sent
 end

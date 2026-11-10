@@ -14,13 +14,20 @@ local TIMER_GAP = 300
 local COUNTERS = {
     "heelsMin", "gagMin", "tasks", "heatPeak", "orgasm", "deny", "playMin",
     "pets", "hugs", "kisses", "spanks", "earPinch", "slack", "slackMin",
-    "napOk", "napEarly", "napOver", "napMiss",
+    "napOk", "napEarly", "napOver", "napMiss", "petMiss", "petMin",
 }
 
 local BEFORE_SUB = { "heelsMin", "gagMin", "tasks", "heatPeak", "orgasm", "deny", "playMin" }
 local AFTER_SUB = {
     "pets", "hugs", "kisses", "spanks", "earPinch", "slack", "slackMin",
-    "napOk", "napEarly", "napOver", "napMiss",
+    "napOk", "napEarly", "napOver", "napMiss", "petMiss", "petMin",
+}
+
+local WORN_ENUM = { "blind", "ears", "mittens" }
+local WORN_FLAG = { "bell", "tail", "jewel", "belt", "bra", "leash" }
+local WORN_GEAR = {
+    blind = true, ears = true, mittens = true, bell = true, tail = true,
+    jewel = true, belt = true, bra = true, leash = true,
 }
 
 local minuteStamp = nil
@@ -107,6 +114,9 @@ local function Char()
     if type(char.senders) ~= "table" then
         char.senders = {}
     end
+    if type(char.worn) ~= "table" then
+        char.worn = {}
+    end
     return char
 end
 
@@ -184,7 +194,7 @@ local function ClampCounter(name, value)
     local cap = MINUTE_CAP
     if name == "heatPeak" or name == "sub" then
         cap = 100
-    elseif name ~= "heelsMin" and name ~= "gagMin" and name ~= "playMin" and name ~= "slackMin" then
+    elseif name ~= "heelsMin" and name ~= "gagMin" and name ~= "playMin" and name ~= "slackMin" and name ~= "petMin" then
         cap = 9999
     end
     if n > cap then
@@ -193,7 +203,7 @@ local function ClampCounter(name, value)
     return n
 end
 
-local function Mark(counters, sub, zones, senders)
+local function Mark(counters, sub, zones, senders, worn)
     local parts = {}
     for i = 1, #COUNTERS do
         local name = COUNTERS[i]
@@ -214,6 +224,18 @@ local function Mark(counters, sub, zones, senders)
         for i = 1, #senders do
             parts[#parts + 1] = "p=" .. tostring(senders[i])
         end
+    end
+    local wornNames = {}
+    if type(worn) == "table" then
+        for id, minutes in pairs(worn) do
+            if (tonumber(minutes) or 0) > 0 then
+                wornNames[#wornNames + 1] = tostring(id)
+            end
+        end
+    end
+    table.sort(wornNames)
+    for i = 1, #wornNames do
+        parts[#parts + 1] = "w=" .. wornNames[i] .. "#" .. tostring(worn[wornNames[i]])
     end
     return table.concat(parts, ";")
 end
@@ -264,7 +286,7 @@ end
 
 local function PlanSeq(char, state)
     local day = state.week
-    local mark = Mark(state.counters, state.sub, char.zones, char.senders)
+    local mark = Mark(state.counters, state.sub, char.zones, char.senders, char.worn)
     local sent = char.sent
     local seq = tonumber(state.counters and state.counters.seq) or 1
     if type(sent) == "table" and sent.day == day and sent.mark ~= mark then
@@ -322,6 +344,7 @@ local function ZeroScorecard(state, char, id)
     if char ~= nil then
         char.zones = {}
         char.senders = {}
+        char.worn = {}
     end
     CCT.State.SetWeek(id)
     local shown = ShownHeat(State() or state)
@@ -376,6 +399,7 @@ function CCT.Ledger.EnsureWeek(now)
             sub = tonumber(state.sub) or 0,
             zones = CopyMap(char.zones),
             senders = CopyList(char.senders),
+            worn = CopyMap(char.worn),
         }
         char.sent = nil
     end
@@ -389,6 +413,67 @@ function CCT.Ledger.Stamp(now)
     minuteStamp = Use(now)
     nextMinute = minuteStamp + 60
     return minuteStamp
+end
+
+local function AddWornMinutes(char, id, whole)
+    if type(char.worn) ~= "table" then
+        char.worn = {}
+    end
+    local nextValue = (tonumber(char.worn[id]) or 0) + whole
+    if nextValue < 0 then
+        nextValue = 0
+    end
+    if nextValue > MINUTE_CAP then
+        nextValue = MINUTE_CAP
+    end
+    if nextValue > 0 then
+        char.worn[id] = nextValue
+    end
+end
+
+local function WornAllowed(id)
+    if WORN_GEAR[id] then
+        return true
+    end
+    local toys = CCT.State and CCT.State.Toys
+    if type(toys) ~= "table" then
+        return false
+    end
+    for i = 1, #toys do
+        if toys[i].id == id then
+            return true
+        end
+    end
+    return false
+end
+
+-- Worn minutes follow the same whole-minute clock. The pet journal is not read.
+local function AddWorn(char, state, whole)
+    for i = 1, #WORN_ENUM do
+        local id = WORN_ENUM[i]
+        local value = state[id]
+        if type(value) == "string" and value ~= "none" then
+            AddWornMinutes(char, id, whole)
+        end
+    end
+    for i = 1, #WORN_FLAG do
+        local id = WORN_FLAG[i]
+        if state[id] == true then
+            AddWornMinutes(char, id, whole)
+        end
+    end
+    local toys = state.toys
+    local specs = CCT.State and CCT.State.Toys
+    if type(toys) ~= "table" or type(specs) ~= "table" then
+        return
+    end
+    for i = 1, #specs do
+        local id = specs[i].id
+        local toy = toys[id]
+        if type(toy) == "table" and toy.applied == true then
+            AddWornMinutes(char, id, whole)
+        end
+    end
 end
 
 local function AddZone(char, zone, whole)
@@ -432,6 +517,10 @@ function CCT.Ledger.AddMinutes(now, zoneName)
     if type(state.heels) == "string" and state.heels ~= "none" then
         CCT.State.AddCounter("heelsMin", whole)
     end
+    if state.petSummoned == true and CCT.Module and type(CCT.Module.Enabled) == "function" and CCT.Module.Enabled("PetTracker") == true then
+        CCT.State.AddCounter("petMin", whole)
+    end
+    AddWorn(char, state, whole)
     AddZone(char, zoneName, whole)
     CCT.Ledger.Guard()
     return whole
@@ -513,6 +602,28 @@ local function ZoneFields(day, seq, zones)
     return fields
 end
 
+local function WornFields(day, seq, worn)
+    local fields = {
+        { "day", day },
+        { "seq", seq },
+    }
+    local names = SortedNames(worn)
+    local any = false
+    for i = 1, #names do
+        if WornAllowed(names[i]) then
+            local minutes = ClampCounter("petMin", worn[names[i]])
+            if minutes > 0 then
+                fields[#fields + 1] = { "w", Encode(names[i]) .. ":" .. tostring(minutes) }
+                any = true
+            end
+        end
+    end
+    if not any then
+        return nil
+    end
+    return fields
+end
+
 local function PetFields(day, seq, senders)
     if type(senders) ~= "table" or #senders == 0 then
         return nil
@@ -541,7 +652,7 @@ local function Whisper(target, kind, fields)
     return CCT.Net.Whisper(target, kind, fields) and true or false
 end
 
-local function SendDay(target, day, seq, counters, sub, zones, senders, dropped)
+local function SendDay(target, day, seq, counters, sub, zones, senders, worn, dropped)
     if not IsDayId(day) then
         return false
     end
@@ -554,6 +665,10 @@ local function SendDay(target, day, seq, counters, sub, zones, senders, dropped)
     if petBody ~= nil then
         Whisper(target, "pets", petBody)
     end
+    local wornBody = WornFields(day, seq, worn)
+    if wornBody ~= nil then
+        Whisper(target, "worn", wornBody)
+    end
     return ledgerOk and true or false
 end
 
@@ -562,7 +677,7 @@ local function Dirty(char, state)
     if type(sent) ~= "table" or sent.day ~= state.week then
         return true
     end
-    return sent.mark ~= Mark(state.counters, state.sub, char.zones, char.senders)
+    return sent.mark ~= Mark(state.counters, state.sub, char.zones, char.senders, char.worn)
 end
 
 local function DroppedToken(char)
@@ -623,6 +738,7 @@ function CCT.Ledger.Flush(reason, now)
                         row.sub,
                         row.zones,
                         row.senders,
+                        row.worn,
                         dropped
                     )
                     if queued then
@@ -634,7 +750,7 @@ function CCT.Ledger.Flush(reason, now)
         end
     end
     local seq, mark = PlanSeq(char, state)
-    local currentSent = SendDay(target, state.week, seq, state.counters, state.sub, char.zones, char.senders, dropped)
+    local currentSent = SendDay(target, state.week, seq, state.counters, state.sub, char.zones, char.senders, char.worn, dropped)
     if currentSent then
         if seq ~= (tonumber(state.counters and state.counters.seq) or 1) then
             CCT.State.SetSeq(seq)
